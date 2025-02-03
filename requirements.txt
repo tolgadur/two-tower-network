@@ -1,2 +1,5 @@
 datasets
 torch
+more_itertools
+tqdm
+wandb
