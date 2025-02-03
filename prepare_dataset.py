@@ -1,11 +1,13 @@
 from datasets import load_dataset
 import random
 from tqdm import tqdm
+import pandas as pd
+import ast
 
 random.seed(42)
 
 
-def generate_training_triplets(dataset):
+def generate_training_triplets(dataset, savePath=""):
     """
     Generate training triplets from the MS MARCO dataset.
     Each triplet contains (query, positive passages, negative passages).
@@ -14,12 +16,13 @@ def generate_training_triplets(dataset):
 
     Args:
         dataset: MS MARCO dataset split (train/validation/test)
+        savePath: Optional path to save the triplets as CSV
 
     Returns:
-        list of dictionaries containing:
-            - query: the question text
-            - positive_passages: list of relevant passage texts
-            - negative_passages: list of non-relevant passage texts
+        list of tuples containing:
+            - query: the question text on the first position
+            - positive_passages: list of relevant passage texts on the second position
+            - negative_passages: list of non-relevant passage texts on the third position
     """
     dataset_size = len(dataset)
     triplets = []
@@ -38,28 +41,65 @@ def generate_training_triplets(dataset):
         ]
         negative_passages = random.sample(candidate_passages, 10)
 
-        triplet = {
-            "query": row["query"],
-            "positive_passages": row["passages"]["passage_text"],
-            "negative_passages": negative_passages,
-        }
+        triplet = (row["query"], row["passages"]["passage_text"], negative_passages)
         triplets.append(triplet)
 
+    if len(savePath):
+        df = pd.DataFrame(
+            triplets, columns=["query", "positive_passages", "negative_passages"]
+        )
+        df.to_csv(savePath, index=False)
+        print(f"Saved triplets to {savePath}")
     return triplets
 
 
-print("Loading dataset...")
-ds = load_dataset("microsoft/ms_marco", "v1.1")
+def load_triplets(path):
+    """
+    Load triplets from a CSV file.
 
-# Generate triplets for each split
-print("\nProcessing train split...")
-train_triplets = generate_training_triplets(ds["train"])
-print("\nProcessing validation split...")
-validation_triplets = generate_training_triplets(ds["validation"])
-print("\nProcessing test split...")
-test_triplets = generate_training_triplets(ds["test"])
+    Args:
+        path: Path to the CSV file containing triplets
 
-# Print some statistics
-print(f"\nNumber of training triplets: {len(train_triplets)}")
-print(f"Number of validation triplets: {len(validation_triplets)}")
-print(f"Number of test triplets: {len(test_triplets)}")
+    Returns:
+        list of tuples containing:
+            - query: the question text on the first position
+            - positive_passages: list of relevant passage texts on second position
+            - negative_passages: list of non-relevant passage texts on third position
+    """
+    df = pd.read_csv(path)
+    df["positive_passages"] = df["positive_passages"].apply(ast.literal_eval)
+    df["negative_passages"] = df["negative_passages"].apply(ast.literal_eval)
+
+    return df
+
+
+def triplets_to_dataset():
+    """
+    Downloads the data and converts to triplets and saves them to csv files.
+    """
+    print("Loading dataset...")
+    ds = load_dataset("microsoft/ms_marco", "v1.1")
+
+    # Generate triplets for each split
+    print("\nProcessing train split...")
+    train_triplets = generate_training_triplets(
+        ds["train"], savePath="data/train_triplets.csv"
+    )
+    print("\nProcessing validation split...")
+    validation_triplets = generate_training_triplets(
+        ds["validation"], savePath="data/validation_triplets.csv"
+    )
+    print("\nProcessing test split...")
+    test_triplets = generate_training_triplets(
+        ds["test"], savePath="data/test_triplets.csv"
+    )
+
+    # Print some statistics
+    print(f"\nNumber of training triplets: {len(train_triplets)}")
+    print(f"Number of validation triplets: {len(validation_triplets)}")
+    print(f"Number of test triplets: {len(test_triplets)}")
+
+
+# triplets_to_dataset()
+triplets = load_triplets("data/train_triplets.csv")
+print(triplets["query"][0])
