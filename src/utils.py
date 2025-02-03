@@ -28,5 +28,5 @@ def train_word2vec():
 
     # train model
     model = SkipGramModel(vocab_size, 258)
-    trainer = EmbeddingTrainer(model, token_indices)
-    trainer.train(vocab_size, save_model=True)
+    trainer = EmbeddingTrainer(model, token_indices, batch_size=1024)
+    trainer.train(vocab_size=vocab_size, save_model=True, num_epochs=5)
