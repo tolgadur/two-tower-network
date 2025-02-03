@@ -3,6 +3,7 @@ from collections import Counter
 import random
 import os
 import json
+import torch
 
 
 class Tokenizer:
@@ -40,6 +41,14 @@ class Tokenizer:
         text = re.sub(r"[^\x00-\x7F]+", "<UNICODE> ", text)
 
         return text.split()
+
+    def text_to_tensor(self, text):
+        return torch.LongTensor(
+            [
+                self.word2idx.get(token, self.word2idx["<UNKNOWN>"])
+                for token in self.preprocess_text(text)
+            ]
+        )
 
     def preprocess(self, input_filepath, output_filepath):
         """
