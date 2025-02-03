@@ -70,13 +70,21 @@ class EmbeddingTrainer:
 
         # initialize dataset
         windows = list(more_itertools.windowed(tokens, 5))  # window size is 3
+
+        print(f"Number of windows before filtering: {len(windows)}")
+
         windows = [w for w in windows if None not in w]  # filter out incomplete windows
+
+        print(f"Number of windows after filtering: {len(windows)}")
         if isinstance(model, SkipGramModel):
             self.inputs = [w[2] for w in windows]  # single center word
             self.targets = [[w[0], w[1], w[3], w[4]] for w in windows]
         else:
             self.inputs = [[w[0], w[2], w[3], w[4]] for w in windows]
             self.targets = [w[1] for w in windows]  # single center word
+
+        print(f"Number of input samples: {len(self.inputs)}")
+        print(f"Number of target samples: {len(self.targets)}")
 
         self.dataset = torch.utils.data.TensorDataset(
             torch.LongTensor(self.inputs), torch.LongTensor(self.targets)

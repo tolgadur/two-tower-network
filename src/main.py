@@ -1,10 +1,12 @@
-# from src.tokenizer import Tokenizer
+# from tokenizer import Tokenizer
+
 import utils
 
 
 def main():
-    # tokenizer = Tokenizer()
-    utils.build_vocab()
+    # tokenizer = Tokenizer(load_vocab=True)
+    # utils.build_vocab()
+    utils.train_word2vec()
 
 
 if __name__ == "__main__":

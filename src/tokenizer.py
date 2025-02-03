@@ -83,9 +83,9 @@ class Tokenizer:
             # Create output directory if it doesn't exist
             os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
 
-            # Save processed tokens as JSON to preserve them exactly
+            # Save processed tokens as space-separated text
             with open(output_filepath, "w", encoding="utf-8") as file:
-                json.dump(final_tokens, file)
+                file.write(" ".join(final_tokens))
 
             return final_tokens
 
