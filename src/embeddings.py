@@ -44,16 +44,7 @@ class SkipGramModel(torch.nn.Module):
         ngt = -(1 - rnd + 10 ** (-3)).log().mean()
         return pst + ngt
 
-    def load_weights(self, weights_path: str):
-        """Load model weights from a file.
-
-        Args:
-            weights_path: Path to the weights file
-        """
-        self.load_state_dict(torch.load(weights_path, map_location=self.device))
-        self.eval()
-
-    def compute_embedding(self, word_tensor):
+    def compute_embedding(self, word_tensor: torch.Tensor):
         """Compute embedding for a given word tensor."""
         with torch.no_grad():
             return self.embedding(word_tensor)
