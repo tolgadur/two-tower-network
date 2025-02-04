@@ -60,7 +60,6 @@ def train(
     embedding_model: SkipGramModel,
     epochs=10,
     save_model=True,
-    model_path="models/two_tower_model.pt",
 ):
     print("training on device: ", DEVICE)
 
@@ -117,7 +116,8 @@ def train(
 
             wandb.log({"loss": loss.item()})
 
-        print(f"Epoch {epoch} loss: {loss.item()}")
+        print(f"Epoch {epoch + 1} loss: {loss.item()}")
 
     if save_model:
-        torch.save(tower_one.state_dict(), model_path)
+        torch.save(tower_one.state_dict(), "models/tower_one.pt")
+        torch.save(tower_two.state_dict(), "models/tower_two.pt")
