@@ -56,4 +56,8 @@ class TwoTowerDataset(torch.utils.data.Dataset):
             self.embedding_model.compute_embedding(t) for t in neg_tensors
         ]
 
-        return query_embedding, pos_embeddings, neg_embeddings
+        # stack list of tensors to a single tensor
+        pos_tensor = torch.stack(pos_embeddings)
+        neg_tensor = torch.stack(neg_embeddings)
+
+        return query_embedding, pos_tensor, neg_tensor

@@ -2,6 +2,16 @@ import torch
 from tokenizer import Tokenizer
 from embeddings import SkipGramModel, EmbeddingTrainer
 from dataset import TwoTowerDataset
+from trainer import train
+
+
+def load_tokenizer_and_embeddings():
+    tokenizer = Tokenizer(load_vocab=True)
+    vocab_size = len(tokenizer.word2idx)
+    model = SkipGramModel(vocab_size, 258)
+    model.load_state_dict(torch.load("models/skipgram_model.pt", weights_only=True))
+    model.eval()
+    return tokenizer, model
 
 
 def build_vocab():
@@ -35,11 +45,7 @@ def train_word2vec():
 
 
 def embedding_test():
-    tokenizer = Tokenizer(load_vocab=True)
-    vocab_size = len(tokenizer.word2idx)
-    model = SkipGramModel(vocab_size, 258)
-    model.load_state_dict(torch.load("models/skipgram_model.pt"))
-    model.eval()
+    tokenizer, model = load_tokenizer_and_embeddings()
 
     # test model
     test_word = "the"
@@ -48,13 +54,22 @@ def embedding_test():
     print(f"Embedding for {test_word}: {test_embedding}")
 
 
-def dataset_test():
-    print("Loading tokenizer and model...")
-    tokenizer = Tokenizer(load_vocab=True)
-    vocab_size = len(tokenizer.word2idx)
-    model = SkipGramModel(vocab_size, 258)
-    model.load_state_dict(torch.load("models/skipgram_model.pt", weights_only=True))
+def load_dataset():
+    tokenizer, model = load_tokenizer_and_embeddings()
 
     print("Loading dataset...")
     dataset = TwoTowerDataset("data/train_triplets.csv", tokenizer, model)
     print(dataset[0])
+
+    return dataset
+
+
+def train_two_tower():
+    tokenizer, model = load_tokenizer_and_embeddings()
+    train(
+        tokenizer=tokenizer,
+        embedding_model=model,
+        epochs=5,
+        save_model=True,
+        model_path="models/two_tower_model.pt",
+    )

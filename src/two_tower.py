@@ -3,14 +3,18 @@ import torch
 
 class TwoTowerModel(torch.nn.Module):
     def __init__(
-        self, embedding_matrix, hidden_dimension, vocab_size, embedding_dim=256
+        self,
+        embedding_matrix,
+        vocab_size,
+        hidden_dimension=258,
+        embedding_dim=258,
     ):
         super().__init__()
 
         # embedding layer from word2vec
         self.embedding = torch.nn.Embedding(vocab_size, embedding_dim)
-        self.embedding.copy_(embedding_matrix)
-        self.embedding.requires_grad_ = False
+        self.embedding.weight.data.copy_(embedding_matrix)
+        self.embedding.weight.requires_grad = False
 
         # two parallel encoding layers (RNN based)
         self.tower1 = torch.nn.Sequential(
@@ -33,9 +37,14 @@ class TwoTowerModel(torch.nn.Module):
             torch.nn.Linear(1, 1),
         )
 
-    def forward(self, query_tensor, pos_tensors, neg_tensors):
+    def forward(
+        self,
+        query_tensor: torch.Tensor,
+        pos_tensor: torch.Tensor,
+        neg_tensor: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         query_embedding = self.tower1(query_tensor)
-        pos_embeddings = self.tower2(pos_tensors)
-        neg_embeddings = self.tower2(neg_tensors)
+        pos_embeddings = self.tower2(pos_tensor)
+        neg_embeddings = self.tower2(neg_tensor)
 
         return query_embedding, pos_embeddings, neg_embeddings
