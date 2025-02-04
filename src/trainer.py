@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from dataset import TwoTowerDataset
 from tokenizer import Tokenizer
 from embeddings import SkipGramModel
-from two_tower import TwoTowerModel
+from two_tower import TowerOne, TowerTwo
 from tqdm import tqdm
 import wandb
 
@@ -40,19 +40,33 @@ def train(
     )
     dataloader = DataLoader(dataset, batch_size=1024, shuffle=True)
 
-    model = TwoTowerModel(
+    tower_one = TowerOne(
         embedding_matrix=embedding_model.embedding.weight,
         vocab_size=vocab_size,
         embedding_dim=258,
         hidden_dimension=258,
     ).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    tower_two = TowerTwo(
+        embedding_matrix=embedding_model.embedding.weight,
+        vocab_size=vocab_size,
+        embedding_dim=258,
+        hidden_dimension=258,
+    ).to(device)
+
+    # Single optimizer for both towers
+    optimizer = torch.optim.Adam(
+        list(tower_one.parameters()) + list(tower_two.parameters()), lr=0.001
+    )
 
     print("Starting training...")
     wandb.init(project="mlx6-two-tower", name="two-tower-model")
     for epoch in range(epochs):
-        for batch in tqdm(dataloader, desc=f"Epoch {epoch + 1}"):
-            query_embedding, pos_embedding, neg_embedding = model(batch)
+        for query, pos, neg in tqdm(dataloader, desc=f"Epoch {epoch + 1}"):
+            query_embedding = tower_one(query)
+            pos_embedding = tower_two(pos)
+            neg_embedding = tower_two(neg)
+
             loss = triplet_loss(query_embedding, pos_embedding, neg_embedding)
 
             optimizer.zero_grad()
@@ -64,4 +78,4 @@ def train(
         print(f"Epoch {epoch} loss: {loss.item()}")
 
     if save_model:
-        torch.save(model.state_dict(), model_path)
+        torch.save(tower_one.state_dict(), model_path)
