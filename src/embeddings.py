@@ -2,6 +2,7 @@ import torch
 import more_itertools
 import tqdm
 import wandb
+from config import DEVICE
 
 
 class SkipGramModel(torch.nn.Module):
@@ -13,11 +14,10 @@ class SkipGramModel(torch.nn.Module):
             emb: what dimension we want our embeddings to be in
         """
         super().__init__()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.embedding = torch.nn.Embedding(num_embeddings=voc, embedding_dim=emb)
         self.linear = torch.nn.Linear(in_features=emb, out_features=voc, bias=False)
         self.sigmoid = torch.nn.Sigmoid()
-        self.to(self.device)
+        self.to(DEVICE)
 
     def forward(self, inpt, trgs, rand):
         """One forward pass
@@ -57,7 +57,6 @@ class EmbeddingTrainer:
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # initialize dataset
         windows = list(more_itertools.windowed(tokens, 5))  # window size is 3
@@ -101,12 +100,12 @@ class EmbeddingTrainer:
         """
         print("Starting training...")
         wandb.init(project="mlx6-word2vec", name="skipgram-model")
-        self.model.to(self.device)
+        self.model.to(DEVICE)
         for epoch in range(num_epochs):
             prgs = tqdm.tqdm(self.dataloader, desc=f"Epoch {epoch + 1}", leave=False)
             for inpt, trgs in prgs:
-                inpt, trgs = inpt.to(self.device), trgs.to(self.device)
-                rand = torch.randint(0, vocab_size, (inpt.size(0), 2)).to(self.device)
+                inpt, trgs = inpt.to(DEVICE), trgs.to(DEVICE)
+                rand = torch.randint(0, vocab_size, (inpt.size(0), 2)).to(DEVICE)
 
                 self.optimizer.zero_grad()
                 loss: torch.Tensor = self.model(inpt, trgs, rand)
