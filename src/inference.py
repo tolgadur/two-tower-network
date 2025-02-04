@@ -1,6 +1,8 @@
 import torch
 from two_tower import TowerOne, TowerTwo
 from tokenizer import Tokenizer
+import pandas as pd
+from tqdm import tqdm
 
 
 def encode_query(query: str, tokenizer: Tokenizer, tower_one: TowerOne) -> torch.Tensor:
@@ -57,3 +59,37 @@ def encode_document(
         embedding = tower_two(document_tensor, length)  # shape: (1, hidden_dimension)
 
     return embedding.squeeze(0)  # shape: (hidden_dimension,)
+
+
+def create_document_encodings(
+    tokenizer: Tokenizer,
+    tower_two: TowerTwo,
+    documents_path: str = "data/unique_documents.parquet",
+) -> tuple[dict[str, torch.Tensor], dict[torch.Tensor, str]]:
+    """
+    Load all unique documents and create bidirectional mappings between documents and their encodings.
+
+    Args:
+        tokenizer: Tokenizer instance for text processing
+        tower_two: Trained TowerTwo model for document encoding
+        documents_path: Path to the parquet file containing unique documents
+
+    Returns:
+        tuple containing:
+            - dict mapping document strings to their encodings
+            - dict mapping encodings to their document strings
+    """
+    print("Loading unique documents...")
+    documents_df = pd.read_parquet(documents_path)
+
+    doc_to_encoding = {}
+    encoding_to_doc = {}
+
+    print("Encoding documents...")
+    for doc in tqdm(documents_df["document"]):
+        encoding = encode_document(doc, tokenizer, tower_two)
+        doc_to_encoding[doc] = encoding
+        encoding_to_doc[encoding] = doc
+
+    print(f"Created mappings for {len(doc_to_encoding)} documents")
+    return doc_to_encoding, encoding_to_doc

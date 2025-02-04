@@ -4,7 +4,7 @@ from embeddings import SkipGramModel, EmbeddingTrainer
 from dataset import TwoTowerDataset
 from trainer import train
 from two_tower import TowerOne, TowerTwo
-from inference import encode_query, encode_document
+import inference
 
 
 def load_tokenizer_and_embeddings():
@@ -81,7 +81,7 @@ def test_encode_query():
     tokenizer, _ = load_tokenizer_and_embeddings()
     tower_one = load_tower_one()
     query = "What is the capital of France?"
-    query_embedding = encode_query(query, tokenizer, tower_one)
+    query_embedding = inference.encode_query(query, tokenizer, tower_one)
     print(f"Query embedding: {query_embedding}")
     print(f"Shape of embedding: {query_embedding.shape}")
 
@@ -90,7 +90,7 @@ def test_encode_document():
     tokenizer, _ = load_tokenizer_and_embeddings()
     tower_two = load_tower_two()
     document = "Paris is the capital of France."
-    document_embedding = encode_document(document, tokenizer, tower_two)
+    document_embedding = inference.encode_document(document, tokenizer, tower_two)
     print(f"Document embedding: {document_embedding}")
     print(f"Shape of embedding: {document_embedding.shape}")
 
@@ -109,19 +109,3 @@ def load_tower_one():
     tower_one.eval()
 
     return tower_one
-
-
-def load_tower_two():
-    tokenizer, embedding_model = load_tokenizer_and_embeddings()
-
-    tower_two = TowerTwo(
-        embedding_matrix=embedding_model.embedding.weight,
-        vocab_size=len(tokenizer.word2idx),
-        hidden_dimension=258,
-        embedding_dim=258,
-    )
-
-    tower_two.load_state_dict(torch.load("models/tower_two.pt", weights_only=True))
-    tower_two.eval()
-
-    return tower_two

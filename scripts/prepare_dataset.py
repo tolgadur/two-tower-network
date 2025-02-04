@@ -102,6 +102,48 @@ def triplets_to_dataset():
     print(f"Number of test triplets: {len(test_triplets)}")
 
 
-triplets_to_dataset()
+def extract_unique_documents(save_path="data/unique_documents.parquet"):
+    """
+    Extracts all unique documents from the MS MARCO dataset and saves them to a parquet file.
+
+    Args:
+        save_path: Path where to save the unique documents parquet file
+
+    Returns:
+        DataFrame containing all unique documents
+    """
+    print("Loading dataset...")
+    ds = load_dataset("microsoft/ms_marco", "v1.1")
+
+    # Set to store unique documents
+    unique_documents = set()
+
+    # Process each split
+    for split in ["train", "validation", "test"]:
+        print(f"\nExtracting documents from {split} split...")
+        for row in tqdm(ds[split]):
+            unique_documents.update(row["passages"]["passage_text"])
+
+    # Convert to DataFrame
+    df = pd.DataFrame(list(unique_documents), columns=["document"])
+
+    # Save to parquet
+    df.to_parquet(save_path, index=False)
+    print(f"\nSaved {len(df)} unique documents to {save_path}")
+    return df
+
+
+def load_unique_documents(path):
+    # Load and print first 10 documents
+    documents_df = pd.read_parquet("data/unique_documents.parquet")
+    print("\nFirst 10 documents:")
+    for idx, doc in enumerate(documents_df["document"][:10]):
+        print(f"\n{idx + 1}. {doc[:200]}...")  # Print first 200 chars of each doc
+
+
+# extract_unique_documents()
+load_unique_documents("data/unique_documents.parquet")
+
+# triplets_to_dataset()
 # triplets = load_triplets("data/train_triplets.parquet")
 # print(triplets["query"][0])
