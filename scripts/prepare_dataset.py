@@ -133,9 +133,9 @@ def extract_unique_documents(save_path="data/unique_documents.parquet"):
     return df
 
 
-def load_unique_documents(path):
+def load_unique_documents(path="data/unique_documents.parquet"):
     # Load and print first 10 documents
-    documents_df = pd.read_parquet("data/unique_documents.parquet")
+    documents_df = pd.read_parquet(path)
     print("\nFirst 10 documents:")
     for idx, doc in enumerate(documents_df["document"][:10]):
         print(f"\n{idx + 1}. {doc[:200]}...")  # Print first 200 chars of each doc

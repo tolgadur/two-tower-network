@@ -109,3 +109,17 @@ def load_tower_one():
     tower_one.eval()
 
     return tower_one
+
+
+def load_tower_two():
+    tokenizer, embedding_model = load_tokenizer_and_embeddings()
+
+    tower_two = TowerTwo(
+        embedding_matrix=embedding_model.embedding.weight,
+        vocab_size=len(tokenizer.word2idx),
+    )
+
+    tower_two.load_state_dict(torch.load("models/tower_two.pt", weights_only=True))
+    tower_two.eval()
+
+    return tower_two
