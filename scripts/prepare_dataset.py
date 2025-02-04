@@ -2,7 +2,6 @@ from datasets import load_dataset
 import random
 from tqdm import tqdm
 import pandas as pd
-import ast
 
 random.seed(42)
 
@@ -10,19 +9,19 @@ random.seed(42)
 def generate_training_triplets(dataset, savePath=""):
     """
     Generate training triplets from the MS MARCO dataset.
-    Each triplet contains (query, positive passages, negative passages).
-    All 10 passages for a query are positive, and 10 random passages
-    from other queries are negative.
+    Each triplet contains (query, positive passage, negative passage).
+    For each query, creates all possible combinations of its positive passages
+    with randomly sampled negative passages.
 
     Args:
         dataset: MS MARCO dataset split (train/validation/test)
-        savePath: Optional path to save the triplets as CSV
+        savePath: Optional path to save the triplets as parquet file
 
     Returns:
-        list of tuples containing:
-            - query: the question text on the first position
-            - positive_passages: list of relevant passage texts on the second position
-            - negative_passages: list of non-relevant passage texts on the third position
+        DataFrame containing:
+            - query: the question text
+            - positive_passage: a relevant passage text
+            - negative_passage: a non-relevant passage text
     """
     dataset_size = len(dataset)
     triplets = []
@@ -31,6 +30,8 @@ def generate_training_triplets(dataset, savePath=""):
     for row in tqdm(dataset):
         # Get current passages to exclude from negative sampling
         current_passages = set(row["passages"]["passage_text"])
+        query = row["query"]
+        positive_passages = row["passages"]["passage_text"]
 
         # Sample passages from random rows
         candidate_passages = [
@@ -41,41 +42,42 @@ def generate_training_triplets(dataset, savePath=""):
         ]
         negative_passages = random.sample(candidate_passages, 10)
 
-        triplet = (row["query"], row["passages"]["passage_text"], negative_passages)
-        triplets.append(triplet)
+        # Generate combinations for this query and extend the triplets list
+        query_triplets = [
+            (query, pos, neg) for pos in positive_passages for neg in negative_passages
+        ]
+        triplets.extend(query_triplets)
 
     if len(savePath):
         df = pd.DataFrame(
-            triplets, columns=["query", "positive_passages", "negative_passages"]
+            triplets, columns=["query", "positive_passage", "negative_passage"]
         )
-        df.to_csv(savePath, index=False)
+        df.to_parquet(savePath, index=False)
         print(f"Saved triplets to {savePath}")
-    return triplets
+    return pd.DataFrame(
+        triplets, columns=["query", "positive_passage", "negative_passage"]
+    )
 
 
 def load_triplets(path):
     """
-    Load triplets from a CSV file.
+    Load triplets from a parquet file.
 
     Args:
-        path: Path to the CSV file containing triplets
+        path: Path to the parquet file containing triplets
 
     Returns:
-        list of tuples containing:
-            - query: the question text on the first position
-            - positive_passages: list of relevant passage texts on second position
-            - negative_passages: list of non-relevant passage texts on third position
+        DataFrame containing:
+            - query: the question text
+            - positive_passage: a relevant passage text
+            - negative_passage: a non-relevant passage text
     """
-    df = pd.read_csv(path)
-    df["positive_passages"] = df["positive_passages"].apply(ast.literal_eval)
-    df["negative_passages"] = df["negative_passages"].apply(ast.literal_eval)
-
-    return df
+    return pd.read_parquet(path)
 
 
 def triplets_to_dataset():
     """
-    Downloads the data and converts to triplets and saves them to csv files.
+    Downloads the data and converts to triplets and saves them to parquet files.
     """
     print("Loading dataset...")
     ds = load_dataset("microsoft/ms_marco", "v1.1")
@@ -83,15 +85,15 @@ def triplets_to_dataset():
     # Generate triplets for each split
     print("\nProcessing train split...")
     train_triplets = generate_training_triplets(
-        ds["train"], savePath="data/train_triplets.csv"
+        ds["train"], savePath="data/train_triplets.parquet"
     )
     print("\nProcessing validation split...")
     validation_triplets = generate_training_triplets(
-        ds["validation"], savePath="data/validation_triplets.csv"
+        ds["validation"], savePath="data/validation_triplets.parquet"
     )
     print("\nProcessing test split...")
     test_triplets = generate_training_triplets(
-        ds["test"], savePath="data/test_triplets.csv"
+        ds["test"], savePath="data/test_triplets.parquet"
     )
 
     # Print some statistics
@@ -100,6 +102,6 @@ def triplets_to_dataset():
     print(f"Number of test triplets: {len(test_triplets)}")
 
 
-# triplets_to_dataset()
-triplets = load_triplets("data/train_triplets.csv")
-print(triplets["query"][0])
+triplets_to_dataset()
+# triplets = load_triplets("data/train_triplets.parquet")
+# print(triplets["query"][0])

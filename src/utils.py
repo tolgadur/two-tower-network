@@ -29,7 +29,7 @@ def train_word2vec():
     # load tokens from file
     with open("data/final-text8", "r") as f:
         tokens = f.read().split()
-    print(f"Tokens: {tokens[:10]}")
+    print(f"First 10 tokens: {tokens[:10]}")
     print(f"Number of tokens loaded: {len(tokens)}")
 
     # convert tokens to indices
@@ -55,10 +55,10 @@ def embedding_test():
 
 
 def load_dataset():
-    tokenizer, model = load_tokenizer_and_embeddings()
+    tokenizer, _ = load_tokenizer_and_embeddings()
 
     print("Loading dataset...")
-    dataset = TwoTowerDataset("data/train_triplets.csv", tokenizer, model)
+    dataset = TwoTowerDataset("data/train_triplets.parquet", tokenizer)
     print(dataset[0])
 
     return dataset
