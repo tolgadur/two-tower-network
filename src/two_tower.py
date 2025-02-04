@@ -11,24 +11,38 @@ class TowerOne(torch.nn.Module):
     ):
         super().__init__()
 
-        # embedding layer from word2vec
-        self.embedding = torch.nn.Embedding(vocab_size, embedding_dim)
+        # embedding layer from word2vec with frozen weights
+        self.embedding = torch.nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
         self.embedding.weight.data.copy_(embedding_matrix)
         self.embedding.weight.requires_grad = False
 
-        # two parallel encoding layers (RNN based)
-        self.model = torch.nn.Sequential(
-            self.embedding,
-            torch.nn.RNN(embedding_dim, hidden_dimension),
-            torch.nn.Dropout(0.5),
-            torch.nn.Linear(hidden_dimension, 1),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(0.5),
-            torch.nn.Linear(1, 1),
-        )
+        self.rnn = torch.nn.RNN(embedding_dim, hidden_dimension, batch_first=True)
+        self.fc = torch.nn.Linear(hidden_dimension, hidden_dimension)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)
+    def forward(self, x: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+        """
+        Inputs:
+            x: torch.Tensor, shape (batch_size, seq_len). Represents query sentence
+                indices in vocabulary.
+            lengths: torch.Tensor, shape (batch_size,). Length of each query sentence.
+        Outputs:
+            out: torch.Tensor, shape (batch_size, hidden_dimension).
+        """
+
+        # Embed the input
+        x = self.embedding(x)  # shape (batch_size, seq_len, embedding_dim)
+
+        # RNN with packed sequence
+        packed_x = torch.nn.utils.rnn.pack_padded_sequence(
+            x, lengths, batch_first=True, enforce_sorted=False
+        )  # shape (batch_size, seq_len, embedding_dim)
+        _, h_n = self.rnn(packed_x)  # shape (batch_size, hidden_dimension)
+
+        # FC layer
+        hidden = h_n[-1]
+        out = self.fc(hidden)  # shape (batch_size, hidden_dimension)
+
+        return out
 
 
 class TowerTwo(torch.nn.Module):
@@ -41,21 +55,35 @@ class TowerTwo(torch.nn.Module):
     ):
         super().__init__()
 
-        # embedding layer from word2vec
-        self.embedding = torch.nn.Embedding(vocab_size, embedding_dim)
+        # embedding layer from word2vec with frozen weights
+        self.embedding = torch.nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
         self.embedding.weight.data.copy_(embedding_matrix)
         self.embedding.weight.requires_grad = False
 
-        # two parallel encoding layers (RNN based)
-        self.model = torch.nn.Sequential(
-            self.embedding,
-            torch.nn.RNN(embedding_dim, hidden_dimension),
-            torch.nn.Dropout(0.5),
-            torch.nn.Linear(hidden_dimension, 1),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(0.5),
-            torch.nn.Linear(1, 1),
-        )
+        self.rnn = torch.nn.RNN(embedding_dim, hidden_dimension, batch_first=True)
+        self.fc = torch.nn.Linear(hidden_dimension, hidden_dimension)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)
+    def forward(self, x: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+        """
+        Inputs:
+            x: torch.Tensor, shape (batch_size, seq_len). Represents query sentence
+                indices in vocabulary.
+            lengths: torch.Tensor, shape (batch_size,). Length of each query sentence.
+        Outputs:
+            out: torch.Tensor, shape (batch_size, hidden_dimension).
+        """
+
+        # Embed the input
+        x = self.embedding(x)  # shape (batch_size, seq_len, embedding_dim)
+
+        # RNN with packed sequence
+        packed_x = torch.nn.utils.rnn.pack_padded_sequence(
+            x, lengths, batch_first=True, enforce_sorted=False
+        )  # shape (batch_size, seq_len, embedding_dim)
+        _, h_n = self.rnn(packed_x)  # shape (batch_size, hidden_dimension)
+
+        # FC layer
+        hidden = h_n[-1]
+        out = self.fc(hidden)  # shape (batch_size, hidden_dimension)
+
+        return out
