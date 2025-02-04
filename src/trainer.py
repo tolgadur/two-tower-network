@@ -71,7 +71,7 @@ def train(
         tokenizer=tokenizer,
     )
     dataloader = DataLoader(
-        dataset, batch_size=1024, shuffle=True, collate_fn=collate_fn
+        dataset, batch_size=10240, shuffle=True, collate_fn=collate_fn
     )
 
     tower_one = TowerOne(
