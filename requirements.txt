@@ -4,3 +4,4 @@ more_itertools
 tqdm
 wandb
 faiss-cpu
+gensim

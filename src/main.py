@@ -1,22 +1,24 @@
 import utils
-
-# import inference
+from inference import TwoTowerInference
 
 
 def main():
-    # tokenizer, _ = utils.load_tokenizer_and_embeddings()
-    # tower_one = utils.load_tower_one()
-    # tower_two = utils.load_tower_two()
 
-    # kNNInference = inference.TwoTowerInference(tower_one, tower_two, tokenizer)
-    # kNNInference.add_documents_from_file()
+    # utils.train_two_tower()
+    # Load models
+    tower_one = utils.load_tower_one()
+    tower_two = utils.load_tower_two()
 
-    # neighbours, scores = kNNInference.kNN("what is rba")
-    # for neighbour, score in zip(neighbours, scores):
-    #     print(f"Neighbour: {neighbour}, Score: {score}")
-    #     print("--------------------------------")
+    # Initialize inference
+    inference = TwoTowerInference(tower_one, tower_two)
+    inference.add_documents_from_file()
 
-    utils.train_two_tower()
+    # Example query
+    query = "what is rba"
+    neighbours, scores = inference.kNN(query)
+    for neighbour, score in zip(neighbours, scores):
+        print(f"Neighbour: {neighbour}, Score: {score}")
+        print("--------------------------------")
 
 
 if __name__ == "__main__":
