@@ -8,6 +8,7 @@ class TowerOne(torch.nn.Module):
         vocab_size,
         hidden_dimension=258,
         embedding_dim=258,
+        dropout=0.1,
     ):
         super().__init__()
 
@@ -17,6 +18,8 @@ class TowerOne(torch.nn.Module):
         self.embedding.weight.requires_grad = False
 
         self.rnn = torch.nn.RNN(embedding_dim, hidden_dimension, batch_first=True)
+        self.ln = torch.nn.LayerNorm(hidden_dimension)
+        self.dropout = torch.nn.Dropout(dropout)
         self.fc = torch.nn.Linear(hidden_dimension, hidden_dimension)
 
     def forward(self, x: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
@@ -40,6 +43,8 @@ class TowerOne(torch.nn.Module):
 
         # FC layer
         hidden = h_n[-1]
+        hidden = self.ln(hidden)
+        hidden = self.dropout(hidden)
         out = self.fc(hidden)  # shape (batch_size, hidden_dimension)
 
         return out
@@ -52,6 +57,7 @@ class TowerTwo(torch.nn.Module):
         vocab_size,
         hidden_dimension=258,
         embedding_dim=258,
+        dropout=0.1,
     ):
         super().__init__()
 
@@ -61,14 +67,16 @@ class TowerTwo(torch.nn.Module):
         self.embedding.weight.requires_grad = False
 
         self.rnn = torch.nn.RNN(embedding_dim, hidden_dimension, batch_first=True)
+        self.ln = torch.nn.LayerNorm(hidden_dimension)
+        self.dropout = torch.nn.Dropout(dropout)
         self.fc = torch.nn.Linear(hidden_dimension, hidden_dimension)
 
     def forward(self, x: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
         """
         Inputs:
-            x: torch.Tensor, shape (batch_size, seq_len). Represents query sentence
+            x: torch.Tensor, shape (batch_size, seq_len). Represents document
                 indices in vocabulary.
-            lengths: torch.Tensor, shape (batch_size,). Length of each query sentence.
+            lengths: torch.Tensor, shape (batch_size,). Length of each document.
         Outputs:
             out: torch.Tensor, shape (batch_size, hidden_dimension).
         """
@@ -84,6 +92,8 @@ class TowerTwo(torch.nn.Module):
 
         # FC layer
         hidden = h_n[-1]
+        hidden = self.ln(hidden)
+        hidden = self.dropout(hidden)
         out = self.fc(hidden)  # shape (batch_size, hidden_dimension)
 
         return out
