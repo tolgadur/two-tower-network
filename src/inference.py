@@ -1,5 +1,6 @@
 import torch
 import pandas as pd
+import faiss
 from two_tower import TowerOne, TowerTwo
 from tokenizer import Tokenizer
 from config import DEVICE
@@ -7,7 +8,13 @@ from tqdm import tqdm
 
 
 class TwoTowerInference:
-    def __init__(self, tower_one: TowerOne, tower_two: TowerTwo, tokenizer: Tokenizer):
+    def __init__(
+        self,
+        tower_one: TowerOne,
+        tower_two: TowerTwo,
+        tokenizer: Tokenizer,
+        embedding_dimension: int = 258,
+    ):
         """
         Initialize TwoTowerInference with models and tokenizer.
 
@@ -15,12 +22,83 @@ class TwoTowerInference:
             tower_one: Trained TowerOne model
             tower_two: Trained TowerTwo model
             tokenizer: Tokenizer instance for text processing
+            embedding_dimension: Dimension of the embeddings, defaults to 258
         """
         self.tower_one = tower_one
         self.tower_two = tower_two
         self.tokenizer = tokenizer
         self.documents = []
         self.document_encodings = None
+        self.faiss_index = faiss.IndexFlatIP(embedding_dimension)
+
+    def kNN(self, query: str, k: int = 5) -> tuple[list[str], list[float]]:
+        """
+        Find k nearest neighbors for a query string.
+
+        Args:
+            query: The query string to find similar documents for
+            k: Number of nearest neighbors to return (default: 5)
+
+        Returns:
+            tuple[list[str], list[float]]: A tuple containing:
+                - List of k most similar documents
+                - List of corresponding similarity scores
+        """
+        # Encode and normalize query
+        query_encoding = self.encode_query(query)
+        normalized_query = self._normalize_vector(query_encoding)
+
+        # Convert to numpy for FAISS
+        query_np = normalized_query.cpu().numpy()
+
+        # Search the index
+        scores, indices = self.faiss_index.search(query_np, k)
+
+        # Get the corresponding documents
+        documents = [self.documents[idx] for idx in indices[0]]
+        scores = scores[0].tolist()  # Convert scores to list
+
+        return documents, scores
+
+    def add_document_to_index(self, document: str):
+        """
+        Encode a single document and add it to the FAISS index.
+
+        Args:
+            document: Input document string
+        """
+        # Encode and normalize the document
+        encoding = self.encode_document(document)
+        normalized_encoding = self._normalize_vector(encoding)
+
+        # Convert to numpy for FAISS
+        encoding_np = normalized_encoding.cpu().numpy()
+
+        # Add to index
+        self.faiss_index.add(encoding_np)
+
+    def add_documents_from_file(
+        self, filename: str = "data/unique_documents.parquet", batch_size: int = 258
+    ):
+        """
+        Load documents from a file, encode them, and add them to the FAISS index.
+
+        Args:
+            filename: Path to the parquet file containing documents.
+                Default is "data/unique_documents.parquet"
+            batch_size: Number of documents to process at once. Default is 258.
+        """
+        # Encode all documents
+        encodings = self.encode_documents_by_filename(filename, batch_size)
+
+        # Normalize the encodings
+        normalized_encodings = self._normalize_matrix(encodings)
+
+        # Convert to numpy for FAISS
+        encodings_np = normalized_encodings.cpu().numpy()
+
+        # Add to index
+        self.faiss_index.add(encodings_np)
 
     def encode_query(self, query: str) -> torch.Tensor:
         """
@@ -129,3 +207,31 @@ class TwoTowerInference:
         # Concatenate all batches
         self.document_encodings = torch.cat(all_encodings, dim=0)
         return self.document_encodings
+
+    def _normalize_vector(self, vector: torch.Tensor) -> torch.Tensor:
+        """
+        Normalize a single vector to unit length for cosine similarity.
+
+        Args:
+            vector: Input vector of shape (dim,) or (1, dim)
+
+        Returns:
+            torch.Tensor: Normalized vector of shape (1, dim)
+        """
+        if vector.dim() == 1:
+            vector = vector.unsqueeze(0)
+        norm = torch.norm(vector, p=2, dim=1, keepdim=True)
+        return vector / norm
+
+    def _normalize_matrix(self, matrix: torch.Tensor) -> torch.Tensor:
+        """
+        Normalize a matrix of vectors (each row is a vector) to unit length.
+
+        Args:
+            matrix: Input matrix of shape (n, dim)
+
+        Returns:
+            torch.Tensor: Normalized matrix of shape (n, dim)
+        """
+        norm = torch.norm(matrix, p=2, dim=1, keepdim=True)
+        return matrix / norm
