@@ -11,7 +11,7 @@ class TwoTowerDataset(torch.utils.data.Dataset):
             data_path: Path to parquet file containing query, positive_passage,
                       and negative_passage columns
         """
-        self.data = pd.read_parquet(data_path)[:1000]
+        self.data = pd.read_parquet(data_path)
         # Load Google News embeddings
         self.word2vec = api.load("word2vec-google-news-300")
         self.embedding_dim = 300

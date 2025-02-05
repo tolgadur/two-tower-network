@@ -62,7 +62,7 @@ def triplet_loss(
     return loss.mean()
 
 
-def train(epochs=10, save_model=True):
+def train(epochs=10, batch_size=512, save_model=True):
     """Train the two-tower model.
 
     Args:
@@ -74,12 +74,12 @@ def train(epochs=10, save_model=True):
     # Initialize datasets and dataloaders
     train_dataset = TwoTowerDataset(data_path="data/train_triplets.parquet")
     train_dataloader = DataLoader(
-        train_dataset, batch_size=512, shuffle=True, collate_fn=collate_fn
+        train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
     )
 
     val_dataset = TwoTowerDataset(data_path="data/validation_triplets.parquet")
     val_dataloader = DataLoader(
-        val_dataset, batch_size=512, shuffle=False, collate_fn=collate_fn
+        val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn
     )
 
     # Initialize models
