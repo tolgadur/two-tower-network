@@ -99,7 +99,7 @@ def train(
         tokenizer=tokenizer,
     )
     train_dataloader = DataLoader(
-        train_dataset, batch_size=258, shuffle=True, collate_fn=collate_fn
+        train_dataset, batch_size=20000, shuffle=True, collate_fn=collate_fn
     )
 
     # Validation dataset and dataloader
@@ -108,7 +108,7 @@ def train(
         tokenizer=tokenizer,
     )
     val_dataloader = DataLoader(
-        val_dataset, batch_size=258, shuffle=False, collate_fn=collate_fn
+        val_dataset, batch_size=20000, shuffle=False, collate_fn=collate_fn
     )
 
     tower_one = TowerOne(
