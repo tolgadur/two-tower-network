@@ -1,8 +1,6 @@
 import torch
 from two_tower import TowerOne, TowerTwo
 from tokenizer import Tokenizer
-import pandas as pd
-from tqdm import tqdm
 
 
 def encode_query(query: str, tokenizer: Tokenizer, tower_one: TowerOne) -> torch.Tensor:

@@ -9,9 +9,9 @@ random.seed(42)
 def generate_training_triplets(dataset, savePath=""):
     """
     Generate training triplets from the MS MARCO dataset.
-    Each triplet contains (query, positive passage, negative passage).
-    For each query, creates all possible combinations of its positive passages
-    with randomly sampled negative passages.
+    For each passage in a query's passage list, creates one row with:
+    (query, positive passage, randomly sampled negative passage).
+    The negative passage is guaranteed to not be in the original passage list.
 
     Args:
         dataset: MS MARCO dataset split (train/validation/test)
@@ -31,22 +31,22 @@ def generate_training_triplets(dataset, savePath=""):
         # Get current passages to exclude from negative sampling
         current_passages = set(row["passages"]["passage_text"])
         query = row["query"]
-        positive_passages = row["passages"]["passage_text"]
 
-        # Sample passages from random rows
-        candidate_passages = [
-            passage
-            for idx in random.sample(range(dataset_size), 20)
-            for passage in dataset[idx]["passages"]["passage_text"]
-            if passage not in current_passages
-        ]
-        negative_passages = random.sample(candidate_passages, 10)
+        # For each positive passage in the current row
+        for positive_passage in row["passages"]["passage_text"]:
+            # Sample passages from random rows until we find one not in current_passages
+            while True:
+                random_row_idx = random.randint(0, dataset_size - 1)
+                random_passage_list = dataset[random_row_idx]["passages"][
+                    "passage_text"
+                ]
+                # Sample one random passage from the randomly selected row
+                negative_passage = random.choice(random_passage_list)
+                if negative_passage not in current_passages:
+                    break
 
-        # Generate combinations for this query and extend the triplets list
-        query_triplets = [
-            (query, pos, neg) for pos in positive_passages for neg in negative_passages
-        ]
-        triplets.extend(query_triplets)
+            # Add the triplet
+            triplets.append((query, positive_passage, negative_passage))
 
     if len(savePath):
         df = pd.DataFrame(
@@ -139,11 +139,14 @@ def load_unique_documents(path="data/unique_documents.parquet"):
     print("\nFirst 10 documents:")
     for idx, doc in enumerate(documents_df["document"][:10]):
         print(f"\n{idx + 1}. {doc[:200]}...")  # Print first 200 chars of each doc
+    print(documents_df["document"].nunique())
 
 
 # extract_unique_documents()
-load_unique_documents("data/unique_documents.parquet")
+# load_unique_documents("data/unique_documents.parquet")
 
-# triplets_to_dataset()
-# triplets = load_triplets("data/train_triplets.parquet")
+triplets_to_dataset()
+triplets = load_triplets("data/train_triplets.parquet")
+print("Length of triplets:")
+print(len(triplets))
 # print(triplets["query"][0])
