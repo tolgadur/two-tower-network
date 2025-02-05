@@ -104,7 +104,8 @@ def triplets_to_dataset():
 
 def extract_unique_documents(save_path="data/unique_documents.parquet"):
     """
-    Extracts all unique documents from the MS MARCO dataset and saves them to a parquet file.
+    Extracts all unique documents from the MS MARCO dataset and
+    saves them to a parquet file.
 
     Args:
         save_path: Path where to save the unique documents parquet file

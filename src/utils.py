@@ -4,7 +4,8 @@ from embeddings import SkipGramModel, EmbeddingTrainer
 from dataset import TwoTowerDataset
 from trainer import train
 from two_tower import TowerOne, TowerTwo
-import inference
+from inference import TwoTowerInference
+from config import DEVICE
 
 
 def load_tokenizer_and_embeddings():
@@ -80,7 +81,10 @@ def train_two_tower():
 def test_encode_query():
     tokenizer, _ = load_tokenizer_and_embeddings()
     tower_one = load_tower_one()
+    tower_two = load_tower_two()
     query = "What is the capital of France?"
+    inference = TwoTowerInference(tower_one, tower_two, tokenizer)
+
     query_embedding = inference.encode_query(query, tokenizer, tower_one)
     print(f"Query embedding: {query_embedding}")
     print(f"Shape of embedding: {query_embedding.shape}")
@@ -88,11 +92,25 @@ def test_encode_query():
 
 def test_encode_document():
     tokenizer, _ = load_tokenizer_and_embeddings()
+    tower_one = load_tower_one()
     tower_two = load_tower_two()
     document = "Paris is the capital of France."
-    document_embedding = inference.encode_document(document, tokenizer, tower_two)
+    inference = TwoTowerInference(tower_one, tower_two, tokenizer)
+
+    document_embedding = inference.encode_document(document)
     print(f"Document embedding: {document_embedding}")
     print(f"Shape of embedding: {document_embedding.shape}")
+
+
+def test_encode_documents():
+    tokenizer, _ = load_tokenizer_and_embeddings()
+    tower_one = load_tower_one()
+    tower_two = load_tower_two()
+    inference = TwoTowerInference(tower_one, tower_two, tokenizer)
+
+    inference.encode_documents_by_filename()
+    print(f"Document encodings: {inference.document_encodings}")
+    print(f"Shape of document encodings: {inference.document_encodings.shape}")
 
 
 def load_tower_one():
@@ -105,8 +123,11 @@ def load_tower_one():
         embedding_dim=258,
     )
 
-    tower_one.load_state_dict(torch.load("models/tower_one.pt", weights_only=True))
+    tower_one.load_state_dict(
+        torch.load("models/tower_one.pt", weights_only=True, map_location=DEVICE)
+    )
     tower_one.eval()
+    tower_one.to(DEVICE)
 
     return tower_one
 
@@ -119,7 +140,10 @@ def load_tower_two():
         vocab_size=len(tokenizer.word2idx),
     )
 
-    tower_two.load_state_dict(torch.load("models/tower_two.pt", weights_only=True))
+    tower_two.load_state_dict(
+        torch.load("models/tower_two.pt", weights_only=True, map_location=DEVICE)
+    )
     tower_two.eval()
+    tower_two.to(DEVICE)
 
     return tower_two

@@ -1,59 +1,131 @@
 import torch
+import pandas as pd
 from two_tower import TowerOne, TowerTwo
 from tokenizer import Tokenizer
+from config import DEVICE
+from tqdm import tqdm
 
 
-def encode_query(query: str, tokenizer: Tokenizer, tower_one: TowerOne) -> torch.Tensor:
-    """
-    Encode a query string using TowerOne.
+class TwoTowerInference:
+    def __init__(self, tower_one: TowerOne, tower_two: TowerTwo, tokenizer: Tokenizer):
+        """
+        Initialize TwoTowerInference with models and tokenizer.
 
-    Args:
-        query: Input query string
-        tower_one: Trained TowerOne model
-        tokenizer: Optional Tokenizer instance. If None, will load from saved files.
+        Args:
+            tower_one: Trained TowerOne model
+            tower_two: Trained TowerTwo model
+            tokenizer: Tokenizer instance for text processing
+        """
+        self.tower_one = tower_one
+        self.tower_two = tower_two
+        self.tokenizer = tokenizer
+        self.documents = []
+        self.document_encodings = None
 
-    Returns:
-        torch.Tensor: Query embedding of shape (hidden_dimension,)
-    """
+    def encode_query(self, query: str) -> torch.Tensor:
+        """
+        Encode a query string using TowerOne.
 
-    # Convert query to tensor
-    query_tensor = tokenizer.text_to_tensor(query)
+        Args:
+            query: Input query string
 
-    # Add batch dimension and get length
-    query_tensor = query_tensor.unsqueeze(0)  # shape: (1, seq_len)
-    length = torch.tensor([len(query_tensor[0])])  # shape: (1,)
+        Returns:
+            torch.Tensor: Query embedding of shape (hidden_dimension,)
+        """
+        # Convert query to tensor
+        query_tensor = self.tokenizer.text_to_tensor(query)
 
-    # Get embedding
-    with torch.no_grad():
-        embedding = tower_one(query_tensor, length)  # shape: (1, hidden_dimension)
+        # Add batch dimension and get length
+        query_tensor = query_tensor.unsqueeze(0).to(DEVICE)  # shape: (1, seq_len)
+        length = torch.tensor([len(query_tensor[0])], dtype=torch.long)
 
-    return embedding.squeeze(0)  # shape: (hidden_dimension,)
+        # Get embedding
+        with torch.no_grad():
+            encoding = self.tower_one(query_tensor, length)
 
+        return encoding.squeeze(0)  # shape: (hidden_dimension,)
 
-def encode_document(
-    document: str, tokenizer: Tokenizer, tower_two: TowerTwo
-) -> torch.Tensor:
-    """
-    Encode a document string using TowerTwo.
+    def encode_document(self, document: str) -> torch.Tensor:
+        """
+        Encode a document string using TowerTwo.
 
-    Args:
-        document: Input document string
-        tower_two: Trained TowerTwo model
-        tokenizer: Optional Tokenizer instance. If None, will load from saved files.
+        Args:
+            document: Input document string
 
-    Returns:
-        torch.Tensor: Document embedding of shape (hidden_dimension,)
-    """
+        Returns:
+            torch.Tensor: Document embedding of shape (hidden_dimension,)
+        """
+        # Convert document to tensor
+        document_tensor = self.tokenizer.text_to_tensor(document)
 
-    # Convert document to tensor
-    document_tensor = tokenizer.text_to_tensor(document)
+        # Add batch dimension and get length
+        document_tensor = document_tensor.unsqueeze(0).to(DEVICE)  # shape: (1, seq_len)
+        length = torch.tensor([len(document_tensor[0])], dtype=torch.long)
 
-    # Add batch dimension and get length
-    document_tensor = document_tensor.unsqueeze(0)  # shape: (1, seq_len)
-    length = torch.tensor([len(document_tensor[0])])  # shape: (1,)
+        # Get embedding
+        with torch.no_grad():
+            encoding = self.tower_two(document_tensor, length)
 
-    # Get embedding
-    with torch.no_grad():
-        embedding = tower_two(document_tensor, length)  # shape: (1, hidden_dimension)
+        return encoding.squeeze(0)  # shape: (hidden_dimension,)
 
-    return embedding.squeeze(0)  # shape: (hidden_dimension,)
+    def encode_documents_by_filename(
+        self, filename: str = "data/unique_documents.parquet", batch_size: int = 258
+    ) -> torch.Tensor:
+        """
+        Load documents from a parquet file and encode all of them at once.
+
+        Args:
+            filename: Path to the parquet file containing documents.
+                Default is "data/unique_documents.parquet"
+            batch_size: Number of documents to process at once. Default is 32.
+
+        Returns:
+            torch.Tensor: Document encodings matrix of shape
+                (num_documents, hidden_dimension)
+        """
+        # Load documents from parquet file
+        df = pd.read_parquet(filename)
+        self.documents = df["document"].tolist()
+
+        all_encodings = []
+        num_batches = (len(self.documents) + batch_size - 1) // batch_size
+
+        # Process documents in batches
+        for i in tqdm(
+            range(0, len(self.documents), batch_size),
+            total=num_batches,
+            desc="Encoding documents",
+        ):
+            batch_docs = self.documents[i : i + batch_size]
+
+            # Convert batch documents to tensors
+            document_tensors = []
+            lengths = []
+
+            for doc in batch_docs:
+                doc_tensor = self.tokenizer.text_to_tensor(doc)
+                document_tensors.append(doc_tensor)
+                lengths.append(len(doc_tensor))
+
+            # Pad sequences in this batch
+            max_len = max(lengths)
+            padded_tensors = []
+
+            for doc_tensor in document_tensors:
+                if len(doc_tensor) < max_len:
+                    padding = torch.zeros(max_len - len(doc_tensor), dtype=torch.long)
+                    doc_tensor = torch.cat([doc_tensor, padding])
+                padded_tensors.append(doc_tensor)
+
+            # Create batch tensor and move to correct device
+            batch_tensor = torch.stack(padded_tensors).to(DEVICE)
+            length_tensor = torch.tensor(lengths, dtype=torch.long)
+
+            # Get embeddings for this batch
+            with torch.no_grad():
+                batch_encodings = self.tower_two(batch_tensor, length_tensor)
+                all_encodings.append(batch_encodings)
+
+        # Concatenate all batches
+        self.document_encodings = torch.cat(all_encodings, dim=0)
+        return self.document_encodings

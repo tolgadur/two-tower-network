@@ -3,3 +3,4 @@ torch
 more_itertools
 tqdm
 wandb
+faiss-cpu
