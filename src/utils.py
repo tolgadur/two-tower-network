@@ -42,22 +42,55 @@ def train_word2vec():
     vocab_size = len(tokenizer.word2idx)
     print(f"Vocabulary size: {vocab_size}")
 
-    # load tokens from file
+    # First phase: Train on text8 dataset
+    print("\nPhase 1: Training on text8 dataset")
     with open("data/final-text8", "r") as f:
         tokens = f.read().split()
-    print(f"First 10 tokens: {tokens[:10]}")
-    print(f"Number of tokens loaded: {len(tokens)}")
+    print(f"First 10 tokens from text8: {tokens[:10]}")
+    print(f"Number of text8 tokens loaded: {len(tokens)}")
 
     # convert tokens to indices
     token_indices = [
         tokenizer.word2idx[token] for token in tokens if token in tokenizer.word2idx
     ]
-    print(f"Number of valid tokens after getting indices: {len(token_indices)}")
+    print(f"Number of valid text8 tokens after getting indices: {len(token_indices)}")
 
-    # train model
+    # train model on text8
     model = SkipGramModel(vocab_size, 258)
     trainer = EmbeddingTrainer(model, token_indices, batch_size=1024)
     trainer.train(vocab_size=vocab_size, save_model=True, num_epochs=5)
+
+    # Second phase: Fine-tune on unique documents
+    print("\nPhase 2: Fine-tuning on unique documents")
+    df = pd.read_parquet("data/unique_documents.parquet")
+
+    # Process all documents and collect tokens
+    all_doc_tokens = []
+    for doc in df["document"]:
+        tokens = tokenizer.preprocess_text(doc)
+        all_doc_tokens.extend(tokens)
+
+    print(f"Number of tokens from unique documents: {len(all_doc_tokens)}")
+
+    # Convert tokens to indices, split long line for readability
+    doc_token_indices = [
+        tokenizer.word2idx[token]
+        for token in all_doc_tokens
+        if token in tokenizer.word2idx
+    ]
+    doc_token_count = len(doc_token_indices)
+    print(f"Number of valid unique document tokens: {doc_token_count}")
+
+    # Fine-tune model on unique documents with a smaller learning rate
+    trainer = EmbeddingTrainer(
+        model, doc_token_indices, batch_size=1024, learning_rate=1e-4
+    )
+    trainer.train(
+        vocab_size=vocab_size,
+        save_model=True,
+        num_epochs=3,
+        model_path="models/skipgram_model_finetuned.pt",
+    )
 
 
 def embedding_test():

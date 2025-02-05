@@ -18,9 +18,13 @@ class TowerOne(torch.nn.Module):
         self.embedding.weight.requires_grad = False
 
         self.rnn = torch.nn.RNN(embedding_dim, hidden_dimension, batch_first=True)
-        self.ln = torch.nn.LayerNorm(hidden_dimension)
-        self.dropout = torch.nn.Dropout(dropout)
-        self.fc = torch.nn.Linear(hidden_dimension, hidden_dimension)
+        self.sequential = torch.nn.Sequential(
+            torch.nn.Linear(hidden_dimension, hidden_dimension),
+            torch.nn.LayerNorm(hidden_dimension),
+            torch.nn.Dropout(dropout),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_dimension, hidden_dimension // 2),
+        )
 
     def forward(self, x: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
         """
@@ -29,7 +33,7 @@ class TowerOne(torch.nn.Module):
                 indices in vocabulary.
             lengths: torch.Tensor, shape (batch_size,). Length of each query sentence.
         Outputs:
-            out: torch.Tensor, shape (batch_size, hidden_dimension).
+            out: torch.Tensor, shape (batch_size, hidden_dimension // 2).
         """
 
         # Embed the input
@@ -43,9 +47,7 @@ class TowerOne(torch.nn.Module):
 
         # FC layer
         hidden = h_n[-1]
-        hidden = self.ln(hidden)
-        hidden = self.dropout(hidden)
-        out = self.fc(hidden)  # shape (batch_size, hidden_dimension)
+        out = self.sequential(hidden)  # shape (batch_size, hidden_dimension)
 
         return out
 
@@ -67,9 +69,14 @@ class TowerTwo(torch.nn.Module):
         self.embedding.weight.requires_grad = False
 
         self.rnn = torch.nn.RNN(embedding_dim, hidden_dimension, batch_first=True)
-        self.ln = torch.nn.LayerNorm(hidden_dimension)
-        self.dropout = torch.nn.Dropout(dropout)
-        self.fc = torch.nn.Linear(hidden_dimension, hidden_dimension)
+
+        self.sequential = torch.nn.Sequential(
+            torch.nn.Linear(hidden_dimension, hidden_dimension),
+            torch.nn.LayerNorm(hidden_dimension),
+            torch.nn.Dropout(dropout),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_dimension, hidden_dimension // 2),
+        )
 
     def forward(self, x: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
         """
@@ -78,7 +85,7 @@ class TowerTwo(torch.nn.Module):
                 indices in vocabulary.
             lengths: torch.Tensor, shape (batch_size,). Length of each document.
         Outputs:
-            out: torch.Tensor, shape (batch_size, hidden_dimension).
+            out: torch.Tensor, shape (batch_size, hidden_dimension // 2).
         """
 
         # Embed the input
@@ -92,8 +99,6 @@ class TowerTwo(torch.nn.Module):
 
         # FC layer
         hidden = h_n[-1]
-        hidden = self.ln(hidden)
-        hidden = self.dropout(hidden)
-        out = self.fc(hidden)  # shape (batch_size, hidden_dimension)
+        out = self.sequential(hidden)  # shape (batch_size, hidden_dimension)
 
         return out
