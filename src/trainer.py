@@ -169,3 +169,8 @@ def train(
     if save_model:
         torch.save(tower_one.state_dict(), "models/tower_one.pt")
         torch.save(tower_two.state_dict(), "models/tower_two.pt")
+        # Save models to wandb
+        wandb.save("models/tower_one.pt")
+        wandb.save("models/tower_two.pt")
+
+    wandb.finish()
