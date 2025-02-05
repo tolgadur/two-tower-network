@@ -6,6 +6,8 @@ from trainer import train
 from two_tower import TowerOne, TowerTwo
 from inference import TwoTowerInference
 from config import DEVICE
+import pandas as pd
+from collections import Counter
 
 
 def load_tokenizer_and_embeddings():
@@ -18,10 +20,21 @@ def load_tokenizer_and_embeddings():
 
 
 def build_vocab():
-    """Build and save vocabulary from both datasets."""
+    """Build and save vocabulary from both text8 and unique documents datasets."""
     tokenizer = Tokenizer(load_vocab=False)
-    tokens = tokenizer.preprocess("data/text8", "data/final-text8")
-    tokenizer.build_vocab(tokens)
+
+    # Process text8 dataset
+    text8_tokens = tokenizer.preprocess("data/text8", "data/final-text8")
+
+    # Process unique documents
+    df = pd.read_parquet("data/unique_documents.parquet")
+    doc_tokens = tokenizer.process_documents(df["document"].tolist())
+
+    # Combine tokens from both sources
+    all_tokens = text8_tokens + doc_tokens
+
+    # Build and save the combined vocabulary
+    tokenizer.build_vocab(all_tokens)
 
 
 def train_word2vec():
@@ -147,3 +160,46 @@ def load_tower_two():
     tower_two.to(DEVICE)
 
     return tower_two
+
+
+def evaluate_tokenizer_coverage():
+    """
+    Evaluates the tokenizer's coverage by analyzing the percentage of unknown tokens
+    in the unique documents dataset.
+    """
+
+    # Load tokenizer
+    tokenizer = Tokenizer(load_vocab=True)
+
+    # Load unique documents
+    df = pd.read_parquet("data/unique_documents.parquet")
+
+    total_tokens = 0
+    unknown_tokens = 0
+    unknown_token_examples = Counter()
+
+    # Process each document
+    for doc in df["document"]:
+        tokens = tokenizer.preprocess_text(doc)
+        total_tokens += len(tokens)
+
+        # Count unknown tokens
+        for token in tokens:
+            if token not in tokenizer.word2idx:
+                unknown_tokens += 1
+                unknown_token_examples[token] += 1
+
+    # Calculate percentage
+    unknown_percentage = (
+        (unknown_tokens / total_tokens) * 100 if total_tokens > 0 else 0
+    )
+
+    print(f"\nTokenizer Coverage Analysis:")
+    print(f"Total tokens processed: {total_tokens:,}")
+    print(f"Unknown tokens found: {unknown_tokens:,}")
+    print(f"Percentage of unknown tokens: {unknown_percentage:.2f}%")
+
+    # Print most common unknown tokens
+    print("\nTop 10 most common unknown tokens:")
+    for token, count in unknown_token_examples.most_common(10):
+        print(f"'{token}': {count:,} occurrences")

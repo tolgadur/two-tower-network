@@ -40,7 +40,16 @@ class Tokenizer:
         text = re.sub(r"\d+", " <DIGIT> ", text)
         text = re.sub(r"[^\x00-\x7F]+", "<UNICODE> ", text)
 
-        return text.split()
+        # Split into tokens
+        tokens = text.split()
+
+        # Remove single character tokens
+        tokens = [token for token in tokens if len(token) > 1]
+
+        # Apply stemming
+        tokens = [self._simple_stem(token) for token in tokens]
+
+        return tokens
 
     def text_to_tensor(self, text):
         return torch.LongTensor(
@@ -74,20 +83,14 @@ class Tokenizer:
 
             tokens = self.preprocess_text(text)
 
-            # Remove single character tokens
-            tokens = [token for token in tokens if len(token) > 1]
-
             # Remove rare words
             filtered_tokens = self._remove_rare_words(tokens)
 
             # add <unknown> to the tokens
             filtered_tokens.append("<UNKNOWN>")
 
-            # Apply stemming
-            stemmed_tokens = [self._simple_stem(token) for token in filtered_tokens]
-
             # Apply subsampling
-            final_tokens = self._subsample_words(stemmed_tokens, self.threshold)
+            final_tokens = self._subsample_words(filtered_tokens, self.threshold)
 
             # Create output directory if it doesn't exist
             os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
@@ -263,3 +266,28 @@ class Tokenizer:
                 kept_words.append(word)
 
         return kept_words
+
+    def process_documents(self, documents):
+        """
+        Process a list of documents and return all valid tokens.
+
+        Args:
+            documents: List of document strings to process
+
+        Returns:
+            List of processed tokens from all documents
+        """
+        all_tokens = []
+
+        for doc in documents:
+            # Apply preprocessing (includes tokenization, single char removal, and stemming)
+            tokens = self.preprocess_text(doc)
+            all_tokens.extend(tokens)
+
+        # Remove rare words from the complete set
+        filtered_tokens = self._remove_rare_words(all_tokens)
+
+        # Add <UNKNOWN> token
+        filtered_tokens.append("<UNKNOWN>")
+
+        return filtered_tokens
