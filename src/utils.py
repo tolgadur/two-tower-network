@@ -80,7 +80,7 @@ def load_tower_two():
 def evaluate_model_on_test_queries(
     inference: TwoTowerInference,
     k: int = 5,
-    num_examples: int = 10,
+    num_examples: int = 1,
 ):
     """Evaluate the model on test queries and display results.
 
