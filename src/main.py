@@ -11,8 +11,9 @@ def main():
     kNNInference.encode_documents_by_filename()
 
     neighbours, scores = kNNInference.kNN("what is rba")
-    print(neighbours)
-    print(scores)
+    for neighbour, score in zip(neighbours, scores):
+        print(f"Neighbour: {neighbour}, Score: {score}")
+        print("--------------------------------")
 
 
 if __name__ == "__main__":
