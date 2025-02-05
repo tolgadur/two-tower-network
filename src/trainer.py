@@ -55,6 +55,34 @@ def triplet_loss(
     return losses.mean()
 
 
+def validate(tower_one: TowerOne, tower_two: TowerTwo, val_dataloader: DataLoader):
+    """Run validation and return average loss."""
+    tower_one.eval()
+    tower_two.eval()
+    total_loss = 0
+    num_batches = 0
+
+    with torch.no_grad():
+        for qry, pos, neg in val_dataloader:
+            qry, qry_lengths = qry
+            pos, pos_lengths = pos
+            neg, neg_lengths = neg
+
+            qry = qry.to(DEVICE)
+            pos = pos.to(DEVICE)
+            neg = neg.to(DEVICE)
+
+            query_embedding = tower_one(qry, qry_lengths)
+            pos_embedding = tower_two(pos, pos_lengths)
+            neg_embedding = tower_two(neg, neg_lengths)
+
+            loss = triplet_loss(query_embedding, pos_embedding, neg_embedding)
+            total_loss += loss.item()
+            num_batches += 1
+
+    return total_loss / num_batches
+
+
 def train(
     tokenizer: Tokenizer,
     embedding_model: SkipGramModel,
@@ -65,12 +93,22 @@ def train(
 
     vocab_size = len(tokenizer.word2idx)
 
-    dataset = TwoTowerDataset(
+    # Training dataset and dataloader
+    train_dataset = TwoTowerDataset(
         data_path="data/train_triplets.parquet",
         tokenizer=tokenizer,
     )
-    dataloader = DataLoader(
-        dataset, batch_size=10240, shuffle=True, collate_fn=collate_fn
+    train_dataloader = DataLoader(
+        train_dataset, batch_size=258, shuffle=True, collate_fn=collate_fn
+    )
+
+    # Validation dataset and dataloader
+    val_dataset = TwoTowerDataset(
+        data_path="data/validation_triplets.parquet",
+        tokenizer=tokenizer,
+    )
+    val_dataloader = DataLoader(
+        val_dataset, batch_size=258, shuffle=False, collate_fn=collate_fn
     )
 
     tower_one = TowerOne(
@@ -95,7 +133,10 @@ def train(
     print("Starting training...")
     wandb.init(project="mlx6-two-tower", name="two-tower-model")
     for epoch in range(epochs):
-        for qry, pos, neg in tqdm(dataloader, desc=f"Epoch {epoch + 1}"):
+        # Set model to training mode
+        tower_one.train()
+        tower_two.train()
+        for qry, pos, neg in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}"):
             qry, qry_lengths = qry
             pos, pos_lengths = pos
             neg, neg_lengths = neg
@@ -114,9 +155,16 @@ def train(
             loss.backward()
             optimizer.step()
 
-            wandb.log({"loss": loss.item()})
+            wandb.log({"train_loss": loss.item()})
 
-        print(f"Epoch {epoch + 1} loss: {loss.item()}")
+        # Validation
+        val_loss = validate(tower_one, tower_two, val_dataloader)
+        print(
+            f"Epoch {epoch + 1} - "
+            f"Train loss: {loss.item():.4f}, "
+            f"Val loss: {val_loss:.4f}"
+        )
+        wandb.log({"train_loss": loss.item(), "val_loss": val_loss, "epoch": epoch + 1})
 
     if save_model:
         torch.save(tower_one.state_dict(), "models/tower_one.pt")
