@@ -8,7 +8,7 @@ def main():
     tower_two = utils.load_tower_two()
 
     kNNInference = inference.TwoTowerInference(tower_one, tower_two, tokenizer)
-    kNNInference.encode_documents_by_filename()
+    kNNInference.add_documents_from_file()
 
     neighbours, scores = kNNInference.kNN("what is rba")
     for neighbour, score in zip(neighbours, scores):

@@ -44,6 +44,9 @@ class TwoTowerInference:
                 - List of k most similar documents
                 - List of corresponding similarity scores
         """
+        if not self.documents:
+            raise ValueError("No documents have been added to the index yet")
+
         # Encode and normalize query
         query_encoding = self.encode_query(query)
         normalized_query = self._normalize_vector(query_encoding)
@@ -56,7 +59,7 @@ class TwoTowerInference:
 
         # Get the corresponding documents
         documents = [self.documents[idx] for idx in indices[0]]
-        scores = scores[0].tolist()  # Convert scores to list
+        scores = scores[0].tolist()
 
         return documents, scores
 
@@ -88,7 +91,7 @@ class TwoTowerInference:
                 Default is "data/unique_documents.parquet"
             batch_size: Number of documents to process at once. Default is 258.
         """
-        # Encode all documents
+        # First get all document encodings
         encodings = self.encode_documents_by_filename(filename, batch_size)
 
         # Normalize the encodings
@@ -97,8 +100,12 @@ class TwoTowerInference:
         # Convert to numpy for FAISS
         encodings_np = normalized_encodings.cpu().numpy()
 
-        # Add to index
-        self.faiss_index.add(encodings_np)
+        # Reset the index and add the encodings
+        self.faiss_index.reset()  # Clear any existing vectors
+        self.faiss_index.add(encodings_np)  # Add all vectors at once
+
+        # Print some stats for verification
+        print(f"Added {len(self.documents)} documents to FAISS index")
 
     def encode_query(self, query: str) -> torch.Tensor:
         """
@@ -108,7 +115,7 @@ class TwoTowerInference:
             query: Input query string
 
         Returns:
-            torch.Tensor: Query embedding of shape (hidden_dimension,)
+            torch.Tensor: Query embedding of shape (1, hidden_dimension)
         """
         # Convert query to tensor
         query_tensor = self.tokenizer.text_to_tensor(query)
@@ -121,7 +128,7 @@ class TwoTowerInference:
         with torch.no_grad():
             encoding = self.tower_one(query_tensor, length)
 
-        return encoding.squeeze(0)  # shape: (hidden_dimension,)
+        return encoding  # shape: (1, hidden_dimension)
 
     def encode_document(self, document: str) -> torch.Tensor:
         """
