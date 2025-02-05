@@ -51,7 +51,7 @@ def triplet_loss(
     query_embedding: torch.Tensor,
     positive_embedding: torch.Tensor,
     negative_embedding: torch.Tensor,
-    margin: float = 0.3,
+    margin: float = 0.7,
 ) -> torch.Tensor:
     """Compute triplet loss between query, positive, and negative embeddings."""
     # Compute cosine similarities
