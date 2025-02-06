@@ -43,7 +43,7 @@ def find_nearest_neighbors(
 def main():
     # print_dataset()
 
-    print("Starting training...")
+    print("Starting training on ", DEVICE)
     tower_one, tower_two = train(epochs=15, batch_size=1024)
     print("Training complete.")
 
