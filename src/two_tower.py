@@ -10,6 +10,8 @@ class TowerOne(nn.Module):
         dropout: float = 0.1,
     ):
         super().__init__()
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
 
         self.sequential = nn.Sequential(
             nn.Linear(embedding_dim, hidden_dim),
@@ -31,6 +33,8 @@ class TowerTwo(nn.Module):
         dropout: float = 0.1,
     ):
         super().__init__()
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
 
         self.sequential = nn.Sequential(
             nn.Linear(embedding_dim, hidden_dim),

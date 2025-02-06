@@ -2,15 +2,12 @@ import torch
 import gensim.downloader as api
 import pandas as pd
 
-docs = [
-    "artificial intelligence is the simulation of human intelligence",
-    "cooking pasta involves boiling water and adding salt",
-    "the stock market closed higher today",
-    "machine learning is a branch of artificial intelligence",
-    "photosynthesis converts light energy into chemical energy",
-    "computers process data",
-    "the capital of france is paris",
-    "cats are cute",
+quick_test_queries = [
+    "how to make coffee",
+    "what is the capital of France",
+    "best programming languages",
+    "covid symptoms",
+    "chocolate cake recipe",
 ]
 
 dummy_triplets = pd.DataFrame(
@@ -63,6 +60,9 @@ class TwoTowerDataset(torch.utils.data.Dataset):
         # Stack and mean pool
         stacked = torch.stack(embeddings)  # Shape: [num_words, embedding_dim]
         return torch.mean(stacked, dim=0)  # Shape: [embedding_dim]
+
+    def _text_to_embeddings_batch(self, texts: list[str]) -> torch.Tensor:
+        return torch.stack([self._text_to_embeddings(text) for text in texts])
 
     def __getitem__(
         self, index: int
