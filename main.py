@@ -2,12 +2,20 @@ from trainer import train
 from dataset import docs, TwoTowerDataset, dummy_triplets
 from two_tower import TowerOne, TowerTwo
 import torch
+from config import DEVICE
+import pandas as pd
+
+
+def print_dataset():
+    df = pd.read_parquet("data/train_triplets.parquet")
+    print(df.head())
+    print(df.tail())
 
 
 def embed_docs(tower_two: TowerTwo, dataset_: TwoTowerDataset):
     encodings = []
     for doc in docs:
-        embedding = dataset_._text_to_embeddings(doc).to("mps")
+        embedding = dataset_._text_to_embeddings(doc).to(DEVICE)
         encoding = tower_two(embedding)
         encodings.append(encoding)
 
@@ -20,7 +28,7 @@ def find_nearest_neighbors(
     doc_encodings: list[torch.Tensor],
     dataset_: TwoTowerDataset,
 ):
-    embedding = dataset_._text_to_embeddings(query).to("mps")
+    embedding = dataset_._text_to_embeddings(query).to(DEVICE)
     query_encoding = tower_one(embedding)
 
     similarities = torch.nn.functional.cosine_similarity(query_encoding, doc_encodings)
@@ -33,9 +41,17 @@ def find_nearest_neighbors(
 
 
 def main():
+    # print_dataset()
+
     print("Starting training...")
-    tower_one, tower_two = train(epochs=10, batch_size=128)
+    train(epochs=10, batch_size=128)
     print("Training complete.")
+
+    print("Loading models...")
+    tower_one = TowerOne().to(DEVICE)
+    tower_two = TowerTwo().to(DEVICE)
+    tower_one.load_state_dict(torch.load("models/tower_one.pth"))
+    tower_two.load_state_dict(torch.load("models/tower_two.pth"))
 
     print("Set models to evaluation mode...")
     tower_one.eval()
