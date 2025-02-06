@@ -67,6 +67,9 @@ def train(epochs: int = 10, batch_size: int = 128):
             {"params": tower_two.parameters(), "lr": 0.001},
         ]
     )
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.1, patience=2
+    )
 
     wandb.init(project="mlx6-two-tower", name="two-tower-model")
     for epoch in range(epochs):
@@ -90,9 +93,16 @@ def train(epochs: int = 10, batch_size: int = 128):
             optimizer.step()
             wandb.log({"train_loss": loss.item()})
 
+        scheduler.step(loss)
         val_loss = validate(tower_one, tower_two, val_dataloader, criterion)
         wandb.log({"epoch": epoch + 1, "val_loss": val_loss})
-        print({"epoch": epoch + 1, "val_loss": val_loss})
+        print(
+            {
+                "epoch": epoch + 1,
+                "val_loss": val_loss,
+                "lr": optimizer.param_groups[0]["lr"],
+            }
+        )
 
         torch.save(tower_one.state_dict(), f"models/tower_one_{epoch}.pth")
         torch.save(tower_two.state_dict(), f"models/tower_two_{epoch}.pth")
