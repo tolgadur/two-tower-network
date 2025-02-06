@@ -24,23 +24,19 @@ class Inference:
         self.docs = None
 
     def save_index(self, path: str = "data/faiss.index"):
-        """Save the FAISS index and document list to disk"""
+        """Save the FAISS index to disk"""
         os.makedirs(os.path.dirname(path), exist_ok=True)
         faiss.write_index(self.index, path)
-        # Save documents alongside the index
-        pd.Series(self.docs).to_parquet(path + ".docs.parquet")
 
     def load_index(self, path: str = "data/faiss.index") -> bool:
-        """Load FAISS index and document list from disk. Returns True if successful."""
+        """Load FAISS index from disk. Returns True if successful."""
         if not os.path.exists(path):
             return False
 
-        docs_path = path + ".docs.parquet"
-        if not os.path.exists(docs_path):
-            return False
-
         self.index = faiss.read_index(path)
-        self.docs = pd.read_parquet(docs_path).values
+        # Load documents from original source
+        df = pd.read_parquet("data/unique_documents.parquet")
+        self.docs = df["document"].values
         return True
 
     def embed_docs(
