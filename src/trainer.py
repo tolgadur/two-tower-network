@@ -1,6 +1,7 @@
 # from itertools import chain
 import pandas as pd
 import torch
+from tqdm import tqdm
 import wandb
 from dataset import TwoTowerDataset
 from two_tower import TowerOne, TowerTwo
@@ -42,17 +43,19 @@ def train(epochs: int = 10, batch_size: int = 128):
     training_data = pd.read_parquet(
         "data/train_triplets.parquet",
         columns=["query", "positive_passage", "negative_passage"],
-    )[:1000]
+    )
     dataset = TwoTowerDataset(training_data)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    print("Training data length: ", len(training_data))
 
     # Loading validation data
     validation_data = pd.read_parquet(
         "data/validation_triplets.parquet",
         columns=["query", "positive_passage", "negative_passage"],
-    )[:1000]
+    )
     val_dataset = TwoTowerDataset(validation_data)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+    print("Validation data length: ", len(validation_data))
 
     tower_one = TowerOne().to(DEVICE)
     tower_two = TowerTwo().to(DEVICE)
@@ -76,8 +79,7 @@ def train(epochs: int = 10, batch_size: int = 128):
         tower_one.train()
         tower_two.train()
 
-        for query, positive, negative in dataloader:
-            # Move data to device
+        for query, positive, negative in tqdm(dataloader, desc=f"Epoch {epoch + 1}"):
             query = query.to(DEVICE)
             positive = positive.to(DEVICE)
             negative = negative.to(DEVICE)
@@ -91,19 +93,22 @@ def train(epochs: int = 10, batch_size: int = 128):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            wandb.log({"train_loss": loss.item()})
 
-        scheduler.step(loss)
+            wandb.log({"train/loss": loss.item()})
+
+        # Get validation loss
         val_loss = validate(tower_one, tower_two, val_dataloader, criterion)
-        wandb.log({"epoch": epoch + 1, "val_loss": val_loss})
-        print(
-            {
-                "epoch": epoch + 1,
-                "val_loss": val_loss,
-                "lr": optimizer.param_groups[0]["lr"],
-            }
-        )
 
+        epoch_metrics = {
+            "epoch": epoch + 1,
+            "val/epoch_loss": val_loss,
+            "train/epoch_loss": loss.item(),
+            "learning_rate": optimizer.param_groups[0]["lr"],
+        }
+        wandb.log(epoch_metrics)
+        print(epoch_metrics)
+
+        scheduler.step(val_loss)
         torch.save(tower_one.state_dict(), f"models/tower_one_{epoch}.pth")
         torch.save(tower_two.state_dict(), f"models/tower_two_{epoch}.pth")
 
