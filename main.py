@@ -44,7 +44,7 @@ def main():
     # print_dataset()
 
     print("Starting training...")
-    tower_one, tower_two = train(epochs=10, batch_size=128)
+    tower_one, tower_two = train(epochs=15, batch_size=1024)
     print("Training complete.")
 
     print("Loading models...")
