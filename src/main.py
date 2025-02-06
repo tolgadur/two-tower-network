@@ -48,10 +48,10 @@ def main():
     print("Training complete.")
 
     print("Loading models...")
-    # tower_one = TowerOne().to(DEVICE)
-    # tower_two = TowerTwo().to(DEVICE)
-    # tower_one.load_state_dict(torch.load("models/tower_one.pth", weights_only=True))
-    # tower_two.load_state_dict(torch.load("models/tower_two.pth", weights_only=True))
+    tower_one = TowerOne().to(DEVICE)
+    tower_two = TowerTwo().to(DEVICE)
+    tower_one.load_state_dict(torch.load("models/tower_one.pth", weights_only=True))
+    tower_two.load_state_dict(torch.load("models/tower_two.pth", weights_only=True))
 
     print("Set models to evaluation mode...")
     tower_one.eval()

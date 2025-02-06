@@ -42,7 +42,7 @@ def train(epochs: int = 10, batch_size: int = 128):
     training_data = pd.read_parquet(
         "data/train_triplets.parquet",
         columns=["query", "positive_passage", "negative_passage"],
-    )
+    )[:1000]
     dataset = TwoTowerDataset(training_data)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
@@ -50,7 +50,7 @@ def train(epochs: int = 10, batch_size: int = 128):
     validation_data = pd.read_parquet(
         "data/validation_triplets.parquet",
         columns=["query", "positive_passage", "negative_passage"],
-    )
+    )[:1000]
     val_dataset = TwoTowerDataset(validation_data)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 

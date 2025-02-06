@@ -1,2 +1,5 @@
 torch
 gensim
+wandb
+numpy
+pandas
