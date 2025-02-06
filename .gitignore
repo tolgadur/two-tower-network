@@ -1,5 +1,7 @@
 /data/*
-/src/__pycache__
 /models/*
+/src/__pycache__/*
 */__pycache__/*
 wandb/*
+*/__pycache__/*
+__pycache__/*
