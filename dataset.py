@@ -1,5 +1,6 @@
 import torch
 import gensim.downloader as api
+import pandas as pd
 
 docs = [
     "artificial intelligence is the simulation of human intelligence",
@@ -12,32 +13,35 @@ docs = [
     "cats are cute",
 ]
 
-dummy_triplets = [
-    (
-        "what is ai",
-        "artificial intelligence is the simulation of human intelligence",
-        "the capital of france is paris",
-    ),
-    (
-        "how to cook pasta",
-        "cooking pasta involves boiling water and adding salt",
-        "the stock market closed higher today",
-    ),
-    (
-        "what is machine learning",
-        "machine learning is a branch of artificial intelligence",
-        "cats are cute",
-    ),
-    (
-        "explain photosynthesis",
-        "photosynthesis converts light energy into chemical energy",
-        "computers process data",
-    ),
-]
+dummy_triplets = pd.DataFrame(
+    [
+        (
+            "what is ai",
+            "artificial intelligence is the simulation of human intelligence",
+            "the capital of france is paris",
+        ),
+        (
+            "how to cook pasta",
+            "cooking pasta involves boiling water and adding salt",
+            "the stock market closed higher today",
+        ),
+        (
+            "what is machine learning",
+            "machine learning is a branch of artificial intelligence",
+            "cats are cute",
+        ),
+        (
+            "explain photosynthesis",
+            "photosynthesis converts light energy into chemical energy",
+            "computers process data",
+        ),
+    ],
+    columns=["query", "positive_passage", "negative_passage"],
+)
 
 
 class TwoTowerDataset(torch.utils.data.Dataset):
-    def __init__(self, data: list[tuple[str, str, str]] = dummy_triplets):
+    def __init__(self, data: pd.DataFrame = dummy_triplets):
         self.word2vec = api.load("word2vec-google-news-300")
         self.data = data
         self.embedding_dim = 300
@@ -60,8 +64,13 @@ class TwoTowerDataset(torch.utils.data.Dataset):
         stacked = torch.stack(embeddings)  # Shape: [num_words, embedding_dim]
         return torch.mean(stacked, dim=0)  # Shape: [embedding_dim]
 
-    def __getitem__(self, index: int) -> tuple[str, str, str]:
-        query, positive, negative = self.data[index]
+    def __getitem__(
+        self, index: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        query = self.data["query"].iloc[index]
+        positive = self.data["positive_passage"].iloc[index]
+        negative = self.data["negative_passage"].iloc[index]
+
         query_embedding = self._text_to_embeddings(query)
         positive_embedding = self._text_to_embeddings(positive)
         negative_embedding = self._text_to_embeddings(negative)

@@ -44,14 +44,14 @@ def main():
     # print_dataset()
 
     print("Starting training...")
-    train(epochs=10, batch_size=128)
+    tower_one, tower_two = train(epochs=10, batch_size=128)
     print("Training complete.")
 
     print("Loading models...")
-    tower_one = TowerOne().to(DEVICE)
-    tower_two = TowerTwo().to(DEVICE)
-    tower_one.load_state_dict(torch.load("models/tower_one.pth"))
-    tower_two.load_state_dict(torch.load("models/tower_two.pth"))
+    # tower_one = TowerOne().to(DEVICE)
+    # tower_two = TowerTwo().to(DEVICE)
+    # tower_one.load_state_dict(torch.load("models/tower_one.pth", weights_only=True))
+    # tower_two.load_state_dict(torch.load("models/tower_two.pth", weights_only=True))
 
     print("Set models to evaluation mode...")
     tower_one.eval()
@@ -60,7 +60,7 @@ def main():
     dataset_ = TwoTowerDataset()
     doc_encodings = embed_docs(tower_two, dataset_)
 
-    for query, pos, _ in dummy_triplets:
+    for _, query, pos, _ in dummy_triplets.itertuples():
         doc, val = find_nearest_neighbors(query, tower_one, doc_encodings, dataset_)
         print(f"Query: {query}")
         print(f"Correct answer: {pos}")

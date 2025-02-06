@@ -39,12 +39,18 @@ def validate(
 
 def train(epochs: int = 10, batch_size: int = 128):
     print("Training...")
-    training_data = pd.read_parquet("data/train_triplets.parquet")[:1000]
+    training_data = pd.read_parquet(
+        "data/train_triplets.parquet",
+        columns=["query", "positive_passage", "negative_passage"],
+    )
     dataset = TwoTowerDataset(training_data)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    print("Validating...")
-    validation_data = pd.read_parquet("data/validation_triplets.parquet")[:1000]
+    # Loading validation data
+    validation_data = pd.read_parquet(
+        "data/validation_triplets.parquet",
+        columns=["query", "positive_passage", "negative_passage"],
+    )
     val_dataset = TwoTowerDataset(validation_data)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
