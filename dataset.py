@@ -52,7 +52,7 @@ class TwoTowerDataset(torch.utils.data.Dataset):
 
         for word in words:
             if word in self.word2vec:
-                emb = self.word2vec[word]
+                emb = self.word2vec[word].copy()
                 embeddings.append(torch.FloatTensor(emb))
             else:
                 embeddings.append(torch.zeros(self.embedding_dim))
