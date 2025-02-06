@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.utils.rnn as rnn_utils
 from torch.utils.data import DataLoader
 from dataset import TwoTowerDataset
@@ -51,14 +52,14 @@ def triplet_loss(
     query_embedding: torch.Tensor,
     positive_embedding: torch.Tensor,
     negative_embedding: torch.Tensor,
-    margin: float = 0.7,
+    margin: float = 0.1,
 ) -> torch.Tensor:
     """Compute triplet loss between query, positive, and negative embeddings."""
     # Compute cosine similarities
     pos_sim = torch.nn.functional.cosine_similarity(query_embedding, positive_embedding)
     neg_sim = torch.nn.functional.cosine_similarity(query_embedding, negative_embedding)
 
-    loss = torch.clamp(pos_sim - neg_sim + margin, min=0)
+    loss = torch.max(pos_sim - neg_sim + margin, torch.tensor(0))
     return loss.mean()
 
 
@@ -82,6 +83,12 @@ def train(epochs=10, batch_size=512, save_model=True):
         val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn
     )
 
+    # initialize loss function
+    loss_function = nn.TripletMarginWithDistanceLoss(
+        margin=0.3,
+        distance_function=lambda x, y: 1.0 - nn.functional.cosine_similarity(x, y),
+    )
+
     # Initialize models
     tower_one = TowerOne().to(DEVICE)
     tower_two = TowerTwo().to(DEVICE)
@@ -90,6 +97,7 @@ def train(epochs=10, batch_size=512, save_model=True):
     optimizer = torch.optim.Adam(
         list(tower_one.parameters()) + list(tower_two.parameters()), lr=0.001
     )
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     print("Starting training...")
     wandb.init(project="mlx6-two-tower", name="two-tower-model")
@@ -117,12 +125,28 @@ def train(epochs=10, batch_size=512, save_model=True):
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
+
+            # todo: remove print gradients
+            print("\nGradients:")
+            for name, param in tower_one.named_parameters():
+                if param.grad is not None:
+                    print(
+                        f"Tower One - {name} grad norm: {param.grad.norm().item():.5f}"
+                    )
+            for name, param in tower_two.named_parameters():
+                if param.grad is not None:
+                    print(
+                        f"Tower Two - {name} grad norm: {param.grad.norm().item():.5f}"
+                    )
+
             optimizer.step()
 
             wandb.log({"train_loss": loss.item()})
 
+        # scheduler.step()
+
         # Validation
-        val_loss = validate(tower_one, tower_two, val_dataloader)
+        val_loss = validate(tower_one, tower_two, val_dataloader, loss_function)
         print(
             f"Epoch {epoch + 1} - "
             f"Train loss: {loss.item():.4f}, "
@@ -141,7 +165,10 @@ def train(epochs=10, batch_size=512, save_model=True):
 
 
 def validate(
-    tower_one: TowerOne, tower_two: TowerTwo, val_dataloader: DataLoader
+    tower_one: TowerOne,
+    tower_two: TowerTwo,
+    val_dataloader: DataLoader,
+    criterion: nn.TripletMarginWithDistanceLoss,
 ) -> float:
     """Run validation and compute average loss.
 
@@ -164,6 +191,7 @@ def validate(
             (pos, pos_lengths),
             (neg, neg_lengths),
         ) in val_dataloader:
+
             # Move data to device
             qry = qry.to(DEVICE)
             pos = pos.to(DEVICE)

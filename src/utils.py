@@ -19,7 +19,7 @@ def load_two_tower_dataset():
 def train_two_tower():
     """Train the two-tower model with default parameters."""
     print("Starting two-tower model training...")
-    train(epochs=5, batch_size=4096, save_model=True)
+    train(epochs=15, batch_size=4, save_model=True)
 
 
 def test_encode_query():
