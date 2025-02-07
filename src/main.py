@@ -10,9 +10,9 @@ from utils import test_accuracy, sanity_test
 
 
 def main():
-    print("Starting training on ", DEVICE)
-    tower_one, tower_two = train(epochs=15, batch_size=2048)
-    print("Training complete.")
+    # print("Starting training on ", DEVICE)
+    # tower_one, tower_two = train(epochs=15, batch_size=2048)
+    # print("Training complete.")
 
     print("Loading models...")
     tower_one = TowerOne().to(DEVICE)

@@ -2,6 +2,7 @@
 /models/tower_one_*.pth
 /models/tower_two_*.pth
 models/faiss.index
+models/faiss_.index
 /data/*
 /src/__pycache__/*
 */__pycache__/*
