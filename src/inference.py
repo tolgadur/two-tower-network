@@ -26,12 +26,12 @@ class Inference:
         self.docs = None
         self.embeddings_builder = embeddings_builder
 
-    def save_index(self, path: str = "data/faiss.index"):
+    def save_index(self, path: str = "models/faiss.index"):
         """Save the FAISS index to disk"""
         os.makedirs(os.path.dirname(path), exist_ok=True)
         faiss.write_index(self.index, path)
 
-    def load_index(self, path: str = "data/faiss.index") -> bool:
+    def load_index(self, path: str = "models/faiss.index") -> bool:
         """Load FAISS index from disk. Returns True if successful."""
         if not os.path.exists(path):
             return False

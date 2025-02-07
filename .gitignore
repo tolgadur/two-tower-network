@@ -1,5 +1,6 @@
+/models/*_.pth
+/models/faiss.index
 /data/*
-/models/*
 /src/__pycache__/*
 */__pycache__/*
 wandb/*
