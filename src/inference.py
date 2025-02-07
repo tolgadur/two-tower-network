@@ -22,7 +22,7 @@ class Inference:
         self.tower_one.eval()
         self.tower_two.eval()
 
-        self.index = faiss.IndexFlatIP(256 // 2)
+        self.index = faiss.IndexFlatIP(tower_one.hidden_dim // 2)
         self.docs = None
         self.embeddings_builder = embeddings_builder
 
@@ -51,11 +51,14 @@ class Inference:
         # Try to load existing index first
         if self.load_index():
             print("Loaded existing FAISS index")
+            print(f"FAISS index size: {self.index.ntotal}")
+            print(f"Documents array size: {len(self.docs)}")
             return
 
         print("Building new FAISS index...")
         df = pd.read_parquet(filename)
         self.docs = df["document"].values
+        print(f"Documents to embed: {len(self.docs)}")
 
         # Process and add to index in batches
         for i in tqdm(range(0, len(self.docs), batch_size)):
@@ -69,6 +72,7 @@ class Inference:
                 faiss.normalize_L2(encodings)
                 self.index.add(encodings)
 
+        print(f"Final FAISS index size: {self.index.ntotal}")
         if save_index:
             self.save_index()
 
@@ -77,10 +81,7 @@ class Inference:
             query_embedding = self.embeddings_builder.text_to_embeddings(query).to(
                 DEVICE
             )
-            query_encoding = self.tower_one(query_embedding).cpu().numpy()
-
-            # Reshape to 2D array (1, dim) as FAISS expects
-            query_encoding = query_encoding.reshape(1, -1)
+            query_encoding = self.tower_one(query_embedding.unsqueeze(0)).cpu().numpy()
 
         faiss.normalize_L2(query_encoding)
         similarities, indices = self.index.search(query_encoding, k)

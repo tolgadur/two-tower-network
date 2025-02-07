@@ -35,18 +35,14 @@ class TowerOne(nn.Module):
     def forward(self, x: torch.Tensor, lengths: torch.Tensor = None) -> torch.Tensor:
         if lengths is None:
             _, h_n = self.rnn(x)
-            # Concatenate forward and backward hidden states along the correct dimension
             x = torch.cat((h_n[-2], h_n[-1]), dim=1)
             return self.sequential(x)
 
-        # Pack sequence
         x_packed = pack_padded_sequence(
             x, lengths.cpu(), batch_first=True, enforce_sorted=False
         )
 
-        # Pass through RNN and get final hidden state
         _, h_n = self.rnn(x_packed)
-        # Concatenate forward and backward hidden states along the correct dimension
         x = torch.cat((h_n[-2], h_n[-1]), dim=1)
 
         return self.sequential(x)
@@ -84,18 +80,14 @@ class TowerTwo(nn.Module):
     def forward(self, x: torch.Tensor, lengths: torch.Tensor = None) -> torch.Tensor:
         if lengths is None:
             _, h_n = self.rnn(x)
-            # Concatenate forward and backward hidden states
             x = torch.cat((h_n[-2], h_n[-1]), dim=1)
             return self.sequential(x)
 
-        # Pack sequence
         x_packed = pack_padded_sequence(
             x, lengths.cpu(), batch_first=True, enforce_sorted=False
         )
 
-        # Pass through RNN and get final hidden state
         _, h_n = self.rnn(x_packed)
-        # Concatenate forward and backward hidden states
         x = torch.cat((h_n[-2], h_n[-1]), dim=1)
 
         return self.sequential(x)
