@@ -1,10 +1,11 @@
 # from trainer import train
-from dataset import EmbeddingsBuilder, quick_test_queries
+from dataset import EmbeddingsBuilder
 from two_tower import TowerOne, TowerTwo
 import torch
 from config import DEVICE
-
 from inference import Inference
+import uvicorn
+from api import create_endpoints
 
 
 def main():
@@ -32,13 +33,18 @@ def main():
     inference = Inference(tower_one, tower_two, EmbeddingsBuilder())
     inference.embed_docs()
 
-    print("Finding nearest neighbors...")
-    for query in quick_test_queries:
-        docs, vals = inference.find_nearest_neighbors(query=query, k=3)
-        print(f"\nQuery: {query}")
-        print("Top 3 matches:")
-        for doc, val in zip(docs, vals):
-            print(f"Similarity: {val:.4f} | Doc: {doc}")
+    # print("Finding nearest neighbors...")
+    # for query in quick_test_queries:
+    #     docs, vals = inference_instance.find_nearest_neighbors(query=query, k=3)
+    #     print(f"\nQuery: {query}")
+    #     print("Top 3 matches:")
+    #     for doc, val in zip(docs, vals):
+    #         print(f"Similarity: {val:.4f} | Doc: {doc}")
+    print("Setting up FastAPI application...")
+    app = create_endpoints(inference)
+
+    print("Starting FastAPI server...")
+    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=True)
 
 
 if __name__ == "__main__":
