@@ -15,16 +15,18 @@ class TowerOne(nn.Module):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
 
-        self.rnn = nn.LSTM(
+        self.rnn = nn.GRU(
             input_size=embedding_dim,
-            hidden_size=hidden_dim,
+            hidden_size=hidden_dim * 2,
             num_layers=rnn_layers,
             batch_first=True,
             dropout=dropout if rnn_layers > 1 else 0,
+            bidirectional=True,
         )
 
         self.sequential = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
+            nn.LayerNorm(hidden_dim * 2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim // 2),
@@ -32,8 +34,9 @@ class TowerOne(nn.Module):
 
     def forward(self, x: torch.Tensor, lengths: torch.Tensor = None) -> torch.Tensor:
         if lengths is None:
-            _, (h_n, _) = self.rnn(x)
-            x = h_n[-1]  # Take the last layer's hidden state
+            _, h_n = self.rnn(x)
+            # Concatenate forward and backward hidden states
+            x = torch.cat((h_n[-2], h_n[-1]), dim=0)
             return self.sequential(x)
 
         # Pack sequence
@@ -42,8 +45,9 @@ class TowerOne(nn.Module):
         )
 
         # Pass through RNN and get final hidden state
-        _, (h_n, _) = self.rnn(x_packed)
-        x = h_n[-1]  # Take the last layer's hidden state
+        _, h_n = self.rnn(x_packed)
+        # Concatenate forward and backward hidden states
+        x = torch.cat((h_n[-2], h_n[-1]), dim=0)
 
         return self.sequential(x)
 
@@ -60,16 +64,18 @@ class TowerTwo(nn.Module):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
 
-        self.rnn = nn.LSTM(
+        self.rnn = nn.GRU(
             input_size=embedding_dim,
-            hidden_size=hidden_dim,
+            hidden_size=hidden_dim * 2,
             num_layers=rnn_layers,
             batch_first=True,
             dropout=dropout if rnn_layers > 1 else 0,
+            bidirectional=True,
         )
 
         self.sequential = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
+            nn.LayerNorm(hidden_dim * 2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim // 2),
@@ -77,8 +83,9 @@ class TowerTwo(nn.Module):
 
     def forward(self, x: torch.Tensor, lengths: torch.Tensor = None) -> torch.Tensor:
         if lengths is None:
-            _, (h_n, _) = self.rnn(x)
-            x = h_n[-1]  # Take the last layer's hidden state
+            _, h_n = self.rnn(x)
+            # Concatenate forward and backward hidden states
+            x = torch.cat((h_n[-2], h_n[-1]), dim=0)
             return self.sequential(x)
 
         # Pack sequence
@@ -87,7 +94,8 @@ class TowerTwo(nn.Module):
         )
 
         # Pass through RNN and get final hidden state
-        _, (h_n, _) = self.rnn(x_packed)
-        x = h_n[-1]  # Take the last layer's hidden state
+        _, h_n = self.rnn(x_packed)
+        # Concatenate forward and backward hidden states
+        x = torch.cat((h_n[-2], h_n[-1]), dim=0)
 
         return self.sequential(x)
