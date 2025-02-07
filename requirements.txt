@@ -1,0 +1,11 @@
+torch
+gensim
+wandb
+numpy
+pandas
+faiss-cpu
+tqdm
+pyarrow
+fastparquet
+fastapi
+uvicorn

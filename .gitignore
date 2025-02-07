@@ -1,0 +1,9 @@
+/models/*_.pth
+/models/faiss.index
+/data/*
+/src/__pycache__/*
+*/__pycache__/*
+wandb/*
+*/__pycache__/*
+__pycache__/*
+.DS_Store
