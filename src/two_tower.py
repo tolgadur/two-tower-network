@@ -17,7 +17,7 @@ class TowerOne(nn.Module):
 
         self.rnn = nn.GRU(
             input_size=embedding_dim,
-            hidden_size=hidden_dim * 2,
+            hidden_size=hidden_dim,
             num_layers=rnn_layers,
             batch_first=True,
             dropout=dropout if rnn_layers > 1 else 0,
@@ -66,7 +66,7 @@ class TowerTwo(nn.Module):
 
         self.rnn = nn.GRU(
             input_size=embedding_dim,
-            hidden_size=hidden_dim * 2,
+            hidden_size=hidden_dim,
             num_layers=rnn_layers,
             batch_first=True,
             dropout=dropout if rnn_layers > 1 else 0,
