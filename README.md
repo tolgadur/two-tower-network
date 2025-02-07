@@ -18,7 +18,7 @@ pip install -r requirements.txt
 python src/main.py
 ```
 
-The server will start on `http://0.0.0.0:8000`.
+The server will start on `http://0.0.0.0:8001`.
 
 ### Running with Docker
 
@@ -26,7 +26,7 @@ The server will start on `http://0.0.0.0:8000`.
 docker build -t two-tower-network .
 
 # Run the container
-docker run -p 8000:8000 two-tower-network
+docker run -p 8001:8001 two-tower-network
 ```
 
 ## API Usage
@@ -34,19 +34,19 @@ docker run -p 8000:8000 two-tower-network
 ### Health Check
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
 ### Document Search
 
 ```bash
 # Search with default k=1
-curl -X POST "http://localhost:8000/query" \
+curl -X POST "http://localhost:8001/query" \
 -H "Content-Type: application/json" \
 -d '{"query": "how to make coffee"}'
 
 # Search with custom k (e.g., k=3)
-curl -X POST "http://localhost:8000/query" \
+curl -X POST "http://localhost:8001/query" \
 -H "Content-Type: application/json" \
 -d '{"query": "how to make coffee", "k": 3}'
 ```
