@@ -44,7 +44,7 @@ def main():
     app = create_endpoints(inference)
 
     print("Starting FastAPI server...")
-    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=True)
+    uvicorn.run(app, host="0.0.0.0", port=8001, access_log=True)
 
 
 if __name__ == "__main__":
