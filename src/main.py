@@ -6,11 +6,10 @@ from config import DEVICE
 from inference import Inference
 import uvicorn
 from api import create_endpoints
+from utils import test_accuracy, sanity_test
 
 
 def main():
-    # print_dataset()
-
     # print("Starting training on ", DEVICE)
     # tower_one, tower_two = train(epochs=15, batch_size=1024)
     # print("Training complete.")
@@ -33,13 +32,14 @@ def main():
     inference = Inference(tower_one, tower_two, EmbeddingsBuilder())
     inference.embed_docs()
 
-    # print("Finding nearest neighbors...")
-    # for query in quick_test_queries:
-    #     docs, vals = inference_instance.find_nearest_neighbors(query=query, k=3)
-    #     print(f"\nQuery: {query}")
-    #     print("Top 3 matches:")
-    #     for doc, val in zip(docs, vals):
-    #         print(f"Similarity: {val:.4f} | Doc: {doc}")
+    # Run accuracy test
+    test_accuracy(inference, k=1)
+    test_accuracy(inference, k=3)
+    test_accuracy(inference, k=5)
+
+    # Run sanity test
+    sanity_test(inference)
+
     print("Setting up FastAPI application...")
     app = create_endpoints(inference)
 

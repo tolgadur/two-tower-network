@@ -4,15 +4,6 @@ import pandas as pd
 from torch.nn.utils.rnn import pad_sequence
 
 
-quick_test_queries = [
-    "how to make coffee",
-    "what is the capital of France",
-    "best programming languages",
-    "covid symptoms",
-    "chocolate cake recipe",
-]
-
-
 class EmbeddingsBuilder:
     def __init__(self):
         self.word2vec = api.load("word2vec-google-news-300")
