@@ -4,3 +4,6 @@ wandb
 numpy
 pandas
 faiss-cpu
+tqdm
+pyarrow
+fastparquet
