@@ -5,10 +5,10 @@ from tqdm import tqdm
 import wandb
 from dataset import TwoTowerDataset
 from two_tower import TowerOne, TowerTwo
-from torch import nn
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 from config import DEVICE
+from losses import InfoNCELoss
 
 
 def collate_fn(batch: list[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
@@ -39,7 +39,7 @@ def validate(
     tower_one: TowerOne,
     tower_two: TowerTwo,
     val_dataloader: DataLoader,
-    criterion: nn.TripletMarginWithDistanceLoss,
+    criterion: InfoNCELoss,
 ):
     tower_one.eval()
     tower_two.eval()
@@ -97,10 +97,7 @@ def train(epochs: int = 10, batch_size: int = 128):
     tower_one = TowerOne().to(DEVICE)
     tower_two = TowerTwo().to(DEVICE)
 
-    criterion = nn.TripletMarginWithDistanceLoss(
-        margin=0.3,
-        distance_function=lambda x, y: 1 - torch.nn.functional.cosine_similarity(x, y),
-    )
+    criterion = InfoNCELoss(temperature=0.07).to(DEVICE)
     optimizer = torch.optim.Adam(
         [
             {"params": tower_one.parameters(), "lr": 0.001},
