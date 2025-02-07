@@ -7,7 +7,32 @@ from dataset import TwoTowerDataset
 from two_tower import TowerOne, TowerTwo
 from torch import nn
 from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pad_sequence
 from config import DEVICE
+
+
+def collate_fn(batch: list[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
+    # Unpack batch using zip
+    queries, positives, negatives = zip(*batch)
+
+    # Get lengths before padding
+    query_lengths = torch.tensor([len(x) for x in queries])
+    positive_lengths = torch.tensor([len(x) for x in positives])
+    negative_lengths = torch.tensor([len(x) for x in negatives])
+
+    # Pad sequences
+    queries_padded = pad_sequence(queries, batch_first=True)
+    positives_padded = pad_sequence(positives, batch_first=True)
+    negatives_padded = pad_sequence(negatives, batch_first=True)
+
+    return (
+        queries_padded,
+        query_lengths,
+        positives_padded,
+        positive_lengths,
+        negatives_padded,
+        negative_lengths,
+    )
 
 
 def validate(
@@ -22,14 +47,22 @@ def validate(
     num_batches = 0
 
     with torch.no_grad():
-        for query, positive, negative in val_dataloader:
+        for batch in val_dataloader:
+            (
+                query,
+                query_lengths,
+                positive,
+                positive_lengths,
+                negative,
+                negative_lengths,
+            ) = batch
             query = query.to(DEVICE)
             positive = positive.to(DEVICE)
             negative = negative.to(DEVICE)
 
-            query_embedding = tower_one(query)
-            positive_embedding = tower_two(positive)
-            negative_embedding = tower_two(negative)
+            query_embedding = tower_one(query, query_lengths)
+            positive_embedding = tower_two(positive, positive_lengths)
+            negative_embedding = tower_two(negative, negative_lengths)
 
             loss = criterion(query_embedding, positive_embedding, negative_embedding)
             total_loss += loss.item()
@@ -45,7 +78,9 @@ def train(epochs: int = 10, batch_size: int = 128):
         columns=["query", "positive_passage", "negative_passage"],
     )
     dataset = TwoTowerDataset(training_data)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
+    )
     print("Training data length: ", len(training_data))
 
     # Loading validation data
@@ -54,7 +89,9 @@ def train(epochs: int = 10, batch_size: int = 128):
         columns=["query", "positive_passage", "negative_passage"],
     )
     val_dataset = TwoTowerDataset(validation_data)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = DataLoader(
+        val_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
+    )
     print("Validation data length: ", len(validation_data))
 
     tower_one = TowerOne().to(DEVICE)
@@ -79,14 +116,22 @@ def train(epochs: int = 10, batch_size: int = 128):
         tower_one.train()
         tower_two.train()
 
-        for query, positive, negative in tqdm(dataloader, desc=f"Epoch {epoch + 1}"):
+        for batch in tqdm(dataloader, desc=f"Epoch {epoch + 1}"):
+            (
+                query,
+                query_lengths,
+                positive,
+                positive_lengths,
+                negative,
+                negative_lengths,
+            ) = batch
             query = query.to(DEVICE)
             positive = positive.to(DEVICE)
             negative = negative.to(DEVICE)
 
-            query_embedding = tower_one(query)
-            positive_embedding = tower_two(positive)
-            negative_embedding = tower_two(negative)
+            query_embedding = tower_one(query, query_lengths)
+            positive_embedding = tower_two(positive, positive_lengths)
+            negative_embedding = tower_two(negative, negative_lengths)
 
             loss = criterion(query_embedding, positive_embedding, negative_embedding)
 

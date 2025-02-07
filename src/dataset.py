@@ -1,6 +1,8 @@
 import torch
 import gensim.downloader as api
 import pandas as pd
+from torch.nn.utils.rnn import pad_sequence
+
 
 quick_test_queries = [
     "how to make coffee",
@@ -10,40 +12,13 @@ quick_test_queries = [
     "chocolate cake recipe",
 ]
 
-dummy_triplets = pd.DataFrame(
-    [
-        (
-            "what is ai",
-            "artificial intelligence is the simulation of human intelligence",
-            "the capital of france is paris",
-        ),
-        (
-            "how to cook pasta",
-            "cooking pasta involves boiling water and adding salt",
-            "the stock market closed higher today",
-        ),
-        (
-            "what is machine learning",
-            "machine learning is a branch of artificial intelligence",
-            "cats are cute",
-        ),
-        (
-            "explain photosynthesis",
-            "photosynthesis converts light energy into chemical energy",
-            "computers process data",
-        ),
-    ],
-    columns=["query", "positive_passage", "negative_passage"],
-)
 
-
-class TwoTowerDataset(torch.utils.data.Dataset):
-    def __init__(self, data: pd.DataFrame = dummy_triplets):
+class EmbeddingsBuilder:
+    def __init__(self):
         self.word2vec = api.load("word2vec-google-news-300")
-        self.data = data
         self.embedding_dim = 300
 
-    def _text_to_embeddings(self, text: str, max_length: int = 30) -> torch.Tensor:
+    def text_to_embeddings(self, text: str, max_length: int = 30) -> torch.Tensor:
         words = text.lower().split()[:max_length]
         embeddings = []
 
@@ -55,14 +30,30 @@ class TwoTowerDataset(torch.utils.data.Dataset):
                 embeddings.append(torch.zeros(self.embedding_dim))
 
         if not embeddings:
-            return torch.zeros(self.embedding_dim)
+            # Return a single zero vector as a sequence of length 1
+            return torch.zeros(1, self.embedding_dim)
 
-        # Stack and mean pool
-        stacked = torch.stack(embeddings)  # Shape: [num_words, embedding_dim]
-        return torch.mean(stacked, dim=0)  # Shape: [embedding_dim]
+        # Stack embeddings to get sequence
+        return torch.stack(embeddings)  # Shape: [seq_len, embedding_dim]
 
-    def _text_to_embeddings_batch(self, texts: list[str]) -> torch.Tensor:
-        return torch.stack([self._text_to_embeddings(text) for text in texts])
+    def text_to_embeddings_batch(
+        self, texts: list[str]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        embeddings = [self.text_to_embeddings(text) for text in texts]
+        lengths = torch.tensor([len(emb) for emb in embeddings])
+        padded = pad_sequence(embeddings, batch_first=True)
+
+        return padded, lengths
+
+
+class TwoTowerDataset(torch.utils.data.Dataset):
+    def __init__(
+        self,
+        data: pd.DataFrame,
+        embeddings_builder: EmbeddingsBuilder = EmbeddingsBuilder(),
+    ):
+        self.data = data
+        self.embeddings_builder = embeddings_builder
 
     def __getitem__(
         self, index: int
@@ -71,9 +62,9 @@ class TwoTowerDataset(torch.utils.data.Dataset):
         positive = self.data["positive_passage"].iloc[index]
         negative = self.data["negative_passage"].iloc[index]
 
-        query_embedding = self._text_to_embeddings(query)
-        positive_embedding = self._text_to_embeddings(positive)
-        negative_embedding = self._text_to_embeddings(negative)
+        query_embedding = self.embeddings_builder.text_to_embeddings(query)
+        positive_embedding = self.embeddings_builder.text_to_embeddings(positive)
+        negative_embedding = self.embeddings_builder.text_to_embeddings(negative)
 
         return (
             query_embedding,

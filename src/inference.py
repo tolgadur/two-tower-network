@@ -2,7 +2,7 @@ import torch
 from tqdm import tqdm
 from two_tower import TowerOne, TowerTwo
 import faiss
-from dataset import TwoTowerDataset
+from dataset import EmbeddingsBuilder
 from config import DEVICE
 import pandas as pd
 import os
@@ -10,7 +10,10 @@ import os
 
 class Inference:
     def __init__(
-        self, tower_one: TowerOne, tower_two: TowerTwo, dataset: TwoTowerDataset
+        self,
+        tower_one: TowerOne,
+        tower_two: TowerTwo,
+        embeddings_builder: EmbeddingsBuilder,
     ):
         self.tower_one = tower_one
         self.tower_two = tower_two
@@ -20,8 +23,8 @@ class Inference:
         self.tower_two.eval()
 
         self.index = faiss.IndexFlatIP(256 // 2)
-        self.dataset = dataset
         self.docs = None
+        self.embeddings_builder = embeddings_builder
 
     def save_index(self, path: str = "data/faiss.index"):
         """Save the FAISS index to disk"""
@@ -58,8 +61,11 @@ class Inference:
         for i in tqdm(range(0, len(self.docs), batch_size)):
             batch = self.docs[i : i + batch_size]
             with torch.no_grad():
-                embeddings = self.dataset._text_to_embeddings_batch(batch).to(DEVICE)
-                encodings = self.tower_two(embeddings).cpu().numpy()
+                embeddings, lengths = self.embeddings_builder.text_to_embeddings_batch(
+                    batch
+                )
+                embeddings = embeddings.to(DEVICE)
+                encodings = self.tower_two(embeddings, lengths).cpu().numpy()
                 faiss.normalize_L2(encodings)
                 self.index.add(encodings)
 
@@ -68,7 +74,9 @@ class Inference:
 
     def find_nearest_neighbors(self, query: str, k: int = 5):
         with torch.no_grad():
-            query_embedding = self.dataset._text_to_embeddings(query).to(DEVICE)
+            query_embedding = self.embeddings_builder.text_to_embeddings(query).to(
+                DEVICE
+            )
             query_encoding = self.tower_one(query_embedding).cpu().numpy()
 
             # Reshape to 2D array (1, dim) as FAISS expects
@@ -77,4 +85,5 @@ class Inference:
         faiss.normalize_L2(query_encoding)
         similarities, indices = self.index.search(query_encoding, k)
 
-        return self.docs[indices.flatten()], similarities.flatten()
+        indices = indices.flatten()
+        return [self.docs[idx] for idx in indices], similarities.flatten()
